@@ -2,58 +2,70 @@ package br.mackenzie;
 
 import com.fazecast.jSerialComm.SerialPort;
 import java.io.InputStream;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ArduinoReaderThread extends Thread {
-    
-    // A palavra-chave 'volatile' garante que o valor seja visível
-    // para todas as threads, garantindo a comunicação segura.
-    private volatile String lastData = "Nenhum dado";
-    private SerialPort arduinoPort;
+
+    private final SerialPort port;
+    private volatile int forcaAtual = 0;
+    private volatile boolean rodando = true;
+    private final ConcurrentLinkedQueue<Integer> tiros = new ConcurrentLinkedQueue<>();
 
     public ArduinoReaderThread(String portName) {
-        this.arduinoPort = SerialPort.getCommPort(portName);
+        this.port = SerialPort.getCommPort(portName);
+        setDaemon(true);
     }
 
     @Override
     public void run() {
-        if (!arduinoPort.openPort()) {
-            System.err.println("Erro: Não foi possível abrir a porta serial.");
+        port.setBaudRate(115200);
+        if (!port.openPort()) {
+            System.err.println("Erro: não foi possível abrir a porta serial.");
             return;
         }
 
-        arduinoPort.setBaudRate(9600);
-        InputStream in = arduinoPort.getInputStream();
-        StringBuilder currentLine = new StringBuilder();
-
-        try {
-            while (!Thread.currentThread().isInterrupted()) {
+        StringBuilder linha = new StringBuilder();
+        try (InputStream in = port.getInputStream()) {
+            while (rodando) {
                 if (in.available() > 0) {
-                    char character = (char) in.read();
-                    currentLine.append(character);
-
-                    if (character == '\n') {
-                        // Armazena a linha completa no shared variable
-                        lastData = currentLine.toString().trim();
-                        currentLine.setLength(0);
+                    char c = (char) in.read();
+                    if (c == '\n') {
+                        processar(linha.toString().trim());
+                        linha.setLength(0);
+                    } else {
+                        linha.append(c);
                     }
+                } else {
+                    Thread.sleep(1);
                 }
-                Thread.sleep(1);
             }
         } catch (Exception e) {
-            System.err.println("Erro na leitura serial: " + e.getMessage());
+            if (rodando) System.err.println("Erro na leitura serial: " + e.getMessage());
         } finally {
-            if (arduinoPort.isOpen()) {
-                arduinoPort.closePort();
+            if (port.isOpen()) {
+                port.closePort();
                 System.out.println("Porta serial fechada.");
             }
         }
     }
 
-    public String getLastData() {
-        return lastData;
+    private void processar(String msg) {
+        try {
+            if (msg.startsWith("FORCA:")) {
+                forcaAtual = Integer.parseInt(msg.substring(6));
+            } else if (msg.startsWith("TIRO:")) {
+                tiros.add(Integer.parseInt(msg.substring(5)));
+            }
+        } catch (NumberFormatException ignored) {
+            // linha corrompida (comum no início da conexão): ignora
+        }
     }
 
-    public void stopReading() {
-        this.interrupt();
-    }
+    /** Força atual (0..4095), para barra de carga. */
+    public int getForca() { return forcaAtual; }
+
+    /** Retorna o próximo tiro (1..3) ou null se não houver. */
+    public Integer pollTiro() { return tiros.poll(); }
+
+    public void stopReading() { rodando = false; }
 }
