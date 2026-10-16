@@ -12,6 +12,7 @@ plugins {
   id "application"
 }
 
+
 sourceSets.main.resources.srcDirs += [ rootProject.file('assets').path ]
 
 // Classe principal do jogo (única definição; substitui o antigo mainClassName).
@@ -23,7 +24,7 @@ eclipse.project.name = appName + '-lwjgl3'
 java.sourceCompatibility = 8
 java.targetCompatibility = 8
 if (JavaVersion.current().isJava9Compatible()) {
-        compileJava.options.release.set(8)
+  compileJava.options.release.set(8)
 }
 
 dependencies {
@@ -34,7 +35,7 @@ dependencies {
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"
 
-    }
+  }
 }
 
 def os = System.properties['os.name'].toLowerCase()
@@ -110,6 +111,8 @@ tasks.register("jarWin") {
       'META-INF/INDEX.LIST', 'META-INF/maven/**')
   }
 }
+
+
 
 // Equivalent to the jar task; here for compatibility with gdx-setup.
 tasks.register('dist') {
