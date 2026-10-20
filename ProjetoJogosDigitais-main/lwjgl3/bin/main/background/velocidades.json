@@ -1,0 +1,10 @@
+{
+ "00_ceu": 0,
+ "01_nuvens": 0.05,
+ "02_colinas": 0.15,
+ "03_arvores": 0.3,
+ "04_fazenda_longe": 0.5,
+ "05_fazenda_perto": 0.75,
+ "06_chao_e_props": 1.0,
+ "07_primeiro_plano": 1.3
+}
