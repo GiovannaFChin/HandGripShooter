@@ -30,9 +30,9 @@ final class Bullet {
     }
 
     boolean overlaps(Enemy enemy) {
-        return x < enemy.getX() + 32f
+        return x < enemy.getX() + Enemy.SIZE
             && x + width > enemy.getX()
-            && y < enemy.getY() + 32f
+            && y < enemy.getY() + Enemy.SIZE
             && y + height > enemy.getY();
     }
 

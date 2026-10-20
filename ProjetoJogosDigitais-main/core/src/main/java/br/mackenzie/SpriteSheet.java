@@ -19,21 +19,37 @@ final class SpriteSheet {
 
             int frameWidth = pixmap.getWidth() / columns;
             int frameHeight = pixmap.getHeight() / rows;
+            int minX = frameWidth;
+            int minY = frameHeight;
+            int maxX = 0;
+            int maxY = 0;
+            for (int row = 0; row < rows; row++) {
+                int frameTop = row * frameHeight;
+                for (int column = 0; column < columns; column++) {
+                    int[] bounds = findVisibleBounds(
+                        pixmap, column * frameWidth, frameTop, frameWidth, frameHeight, assetPath, row, column
+                    );
+                    minX = Math.min(minX, bounds[0]);
+                    minY = Math.min(minY, bounds[1]);
+                    maxX = Math.max(maxX, bounds[0] + bounds[2] - 1);
+                    maxY = Math.max(maxY, bounds[1] + bounds[3] - 1);
+                }
+            }
+
+            int regionWidth = maxX - minX + 1;
+            int regionHeight = maxY - minY + 1;
             TextureRegion[][] frames = new TextureRegion[rows][columns];
             for (int row = 0; row < rows; row++) {
                 int frameTop = row * frameHeight;
                 for (int column = 0; column < columns; column++) {
                     int frameLeft = column * frameWidth;
-                    int[] bounds = findVisibleBounds(
-                        pixmap, frameLeft, frameTop, frameWidth, frameHeight, assetPath, row, column
-                    );
-                    int regionBottom = texture.getHeight() - frameTop - bounds[1] - bounds[3];
+                    int regionBottom = texture.getHeight() - frameTop - minY - regionHeight;
                     frames[row][column] = new TextureRegion(
                         texture,
-                        frameLeft + bounds[0],
+                        frameLeft + minX,
                         regionBottom,
-                        bounds[2],
-                        bounds[3]
+                        regionWidth,
+                        regionHeight
                     );
                 }
             }

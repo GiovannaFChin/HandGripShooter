@@ -13,9 +13,7 @@ final class GameWorld {
     static final float WORLD_HEIGHT = 180f;
 
     private static final float PLAYER_GROUND_Y = 18f;
-    private static final float ENEMY_SPEED = 35f;
-    private static final float ENEMY_SIZE = 32f;
-    private static final float ENEMY_SPAWN_X = WORLD_WIDTH * 0.42f;
+    private static final float ENEMY_SPAWN_X = WORLD_WIDTH + 8f;
     private static final float ENEMY_INTERVAL = 2f;
 
     private final Player player;
@@ -127,16 +125,17 @@ final class GameWorld {
         player.render(batch);
         for (Enemy enemy : enemies) {
             int frameIndex = (int) (enemy.getAnimationTime() * 8f) % 6;
-            boolean facingLeft = player.getX() < enemy.getX();
-            TextureRegion frame = (facingLeft ? mirroredEnemyFrames : enemyFrames)
+            boolean playerIsLeft = player.getX() + Player.WIDTH / 2f
+                < enemy.getX() + Enemy.SIZE / 2f;
+            TextureRegion frame = (playerIsLeft ? enemyFrames : mirroredEnemyFrames)
                 [frameIndex / 2][frameIndex % 2];
-            float drawWidth = ENEMY_SIZE * frame.getRegionWidth() / frame.getRegionHeight();
+            float drawWidth = Enemy.SIZE * frame.getRegionWidth() / frame.getRegionHeight();
             batch.draw(
                 frame,
-                enemy.getX() + (ENEMY_SIZE - drawWidth) / 2f,
+                enemy.getX() + (Enemy.SIZE - drawWidth) / 2f,
                 enemy.getY(),
                 drawWidth,
-                ENEMY_SIZE
+                Enemy.SIZE
             );
         }
     }

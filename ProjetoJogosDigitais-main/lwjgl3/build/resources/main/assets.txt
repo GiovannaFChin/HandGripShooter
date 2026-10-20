@@ -1,0 +1,11 @@
+background/00_ceu.png
+background/01_nuvens.png
+background/02_colinas.png
+background/03_arvores.png
+background/04_fazenda_longe.png
+background/05_fazenda_perto.png
+background/06_chao_e_props.png
+background/07_primeiro_plano.png
+background/velocidades.json
+enemies/pink_j/jelly_run.png
+player/shoot/movement/Dog_shoot.png

@@ -12,7 +12,9 @@ final class Player {
 
     private static final float SPEED = 100f;
     private static final float VERTICAL_SPEED = 80f;
-    private static final float GROUND_Y = 18f;
+    private static final float GROUND_Y = 2f;
+    private static final float MAX_Y = GROUND_Y + 20f;
+    private static final int[] MOVEMENT_FRAMES = {1, 2, 4, 5, 7, 8};
 
     private final Texture texture;
     private final TextureRegion[][] frames;
@@ -21,7 +23,8 @@ final class Player {
     private float y = GROUND_Y;
     private float animationTime;
     private int facing = 1;
-    private boolean active;
+    private boolean moving;
+    private boolean firing;
 
     Player(String assetPath) {
         texture = new Texture(Gdx.files.internal(assetPath));
@@ -34,16 +37,19 @@ final class Player {
         x += horizontal * SPEED * delta;
         y += vertical * VERTICAL_SPEED * delta;
         x = MathUtils.clamp(x, 0f, GameWorld.WORLD_WIDTH - WIDTH);
-        y = MathUtils.clamp(y, GROUND_Y, GameWorld.WORLD_HEIGHT - HEIGHT);
+        y = MathUtils.clamp(y, GROUND_Y, MAX_Y);
         if (horizontal != 0f) {
             facing = horizontal > 0f ? 1 : -1;
         }
-        active = horizontal != 0f || vertical != 0f || firing;
-        animationTime += delta;
+        moving = horizontal != 0f || vertical != 0f;
+        this.firing = firing;
+        animationTime = moving ? animationTime + delta : 0f;
     }
 
     void render(SpriteBatch batch) {
-        int frameIndex = active ? (int) (animationTime * 12f) % 9 : 0;
+        int frameIndex = firing
+            ? 0
+            : moving ? MOVEMENT_FRAMES[(int) (animationTime * 8f) % MOVEMENT_FRAMES.length] : 1;
         TextureRegion frame = facing > 0
             ? frames[frameIndex / 3][frameIndex % 3]
             : mirroredFrames[frameIndex / 3][frameIndex % 3];

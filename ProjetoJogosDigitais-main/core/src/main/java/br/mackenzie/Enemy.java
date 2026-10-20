@@ -1,6 +1,8 @@
 package br.mackenzie;
 
 final class Enemy {
+    static final float SIZE = 32f;
+
     private float x;
     private final float y;
     private float animationTime;
@@ -11,12 +13,14 @@ final class Enemy {
     }
 
     void update(float delta, float playerX) {
-        x += Math.signum(playerX - x) * 35f * delta;
+        float playerCenter = playerX + Player.WIDTH / 2f;
+        float targetX = playerCenter - SIZE / 2f;
+        x += Math.signum(targetX - x) * 50f * delta;
         animationTime += delta;
     }
 
     boolean isOutside(float worldWidth) {
-        return x + 32f < 0f || x > worldWidth;
+        return x + SIZE < 0f || x > worldWidth + SIZE;
     }
 
     float getX() {

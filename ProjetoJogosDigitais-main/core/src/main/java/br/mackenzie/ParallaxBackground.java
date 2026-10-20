@@ -12,7 +12,7 @@ final class ParallaxBackground {
         "00_ceu", "01_nuvens", "02_colinas", "03_arvores",
         "04_fazenda_longe", "05_fazenda_perto", "06_chao_e_props", "07_primeiro_plano"
     };
-    private static final float SCROLL_SPEED = 40f;
+    private static final float SCROLL_SPEED = 120f;
 
     private final Array<Layer> layers = new Array<>();
 
