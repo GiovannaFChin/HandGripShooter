@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.math.Rectangle;
 
 final class GameWorld {
     static final float WORLD_WIDTH = 320f;
@@ -25,6 +26,8 @@ final class GameWorld {
     private final Array<Enemy> enemies = new Array<>();
     private float fireCooldown;
     private float enemySpawnTimer = ENEMY_INTERVAL;
+
+    private final Rectangle enemyBounds = new Rectangle();
 
     GameWorld() {
         player = new Player("player/shoot/movement/Dog_shoot.png");
@@ -55,6 +58,7 @@ final class GameWorld {
         updateBullets(delta);
         updateEnemies(delta);
         removeHitEnemies();
+        checkPlayerCollisions();
     }
 
     void shoot(int level) {
@@ -115,6 +119,33 @@ final class GameWorld {
                 }
             }
         }
+    }
+
+    Player getPlayer() {
+        return player;
+    }
+
+    /** Inimigo que encosta no player some e tira uma vida. */
+    private void checkPlayerCollisions() {
+        Rectangle playerBounds = player.getBounds();
+        for (int i = enemies.size - 1; i >= 0; i--) {
+            Enemy enemy = enemies.get(i);
+            enemyBounds.set(enemy.getX() + 3f, enemy.getY(), Enemy.SIZE - 6f, Enemy.SIZE);
+            if (playerBounds.overlaps(enemyBounds)) {
+                player.hit();
+                enemies.removeIndex(i);
+            }
+        }
+    }
+
+    /** Reinicia a partida (usado ao clicar em Start Game ou Jogar novamente). */
+    void reset() {
+        player.reset();
+        bullets.clear();
+        enemies.clear();
+        enemies.add(new Enemy(ENEMY_SPAWN_X, PLAYER_GROUND_Y));
+        enemySpawnTimer = ENEMY_INTERVAL;
+        fireCooldown = 0f;
     }
 
     void renderBackground(SpriteBatch batch) {

@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 
 final class Player {
     static final float WIDTH = 36f;
@@ -26,6 +27,13 @@ final class Player {
     private boolean moving;
     private boolean firing;
 
+    static final int MAX_LIVES = 3;
+    private static final float INVULNERABLE_TIME = 1.5f;
+
+    private final Rectangle bounds = new Rectangle();
+    private int lives = MAX_LIVES;
+    private float invulnerableTimer;
+
     Player(String assetPath) {
         texture = new Texture(Gdx.files.internal(assetPath));
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
@@ -44,6 +52,9 @@ final class Player {
         moving = horizontal != 0f || vertical != 0f;
         this.firing = firing;
         animationTime = moving ? animationTime + delta : 0f;
+
+        if (invulnerableTimer > 0f) invulnerableTimer -= delta;
+
     }
 
     void render(SpriteBatch batch) {
@@ -55,6 +66,35 @@ final class Player {
             : mirroredFrames[frameIndex / 3][frameIndex % 3];
         float drawWidth = HEIGHT * frame.getRegionWidth() / frame.getRegionHeight();
         batch.draw(frame, x + (WIDTH - drawWidth) / 2f, y, drawWidth, HEIGHT);
+
+        if (invulnerableTimer > 0f && ((int) (invulnerableTimer * 12f)) % 2 == 0) return;
+    }
+
+    Rectangle getBounds() {
+        return bounds.set(x + 8f, y, WIDTH - 16f, HEIGHT);
+    }
+
+    /** Retorna true se realmente perdeu vida (não estava invulnerável). */
+    boolean hit() {
+        if (invulnerableTimer > 0f || lives <= 0) return false;
+        lives--;
+        invulnerableTimer = INVULNERABLE_TIME;
+        return true;
+    }
+
+    int getLives() { return lives; }
+
+    boolean isDead() { return lives <= 0; }
+
+    void reset() {
+        x = 48f;
+        y = GROUND_Y;
+        lives = MAX_LIVES;
+        invulnerableTimer = 0f;
+        facing = 1;
+        moving = false;
+        firing = false;
+        animationTime = 0f;
     }
 
     float getX() {
