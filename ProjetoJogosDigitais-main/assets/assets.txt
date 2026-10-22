@@ -7,5 +7,14 @@ background/05_fazenda_perto.png
 background/06_chao_e_props.png
 background/07_primeiro_plano.png
 background/velocidades.json
+bullet_shoot/clarao_cano_grande_spritesheet.png
+bullet_shoot/clarao_cano_medio_spritesheet.png
+bullet_shoot/clarao_cano_pequeno_spritesheet.png
+bullet_shoot/impact/impacto_grande_spritesheet.png
+bullet_shoot/impact/impacto_medio_spritesheet.png
+bullet_shoot/impact/impacto_pequeno_spritesheet.png
+bullet_shoot/projetil_grande_spritesheet.png
+bullet_shoot/projetil_medio_spritesheet.png
+bullet_shoot/projetil_pequeno_spritesheet.png
 enemies/pink_j/jelly_run.png
 player/shoot/movement/Dog_shoot.png

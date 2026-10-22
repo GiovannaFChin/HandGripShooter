@@ -4,7 +4,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.math.Rectangle;
@@ -13,19 +12,24 @@ final class GameWorld {
     static final float WORLD_WIDTH = 320f;
     static final float WORLD_HEIGHT = 180f;
 
-    private static final float PLAYER_GROUND_Y = 18f;
+    static final float ACTOR_MIN_Y = 2f;
+    static final float ACTOR_MAX_Y = ACTOR_MIN_Y + 20f;
+
     private static final float ENEMY_SPAWN_X = WORLD_WIDTH + 8f;
-    private static final float ENEMY_INTERVAL = 2f;
+    private static final float MIN_ENEMY_INTERVAL = 1f;
+    private static final float MAX_ENEMY_INTERVAL = 2f;
 
     private final Player player;
     private final Texture enemyTexture;
     private final TextureRegion[][] enemyFrames;
     private final TextureRegion[][] mirroredEnemyFrames;
+    private final Bullet.Assets bulletAssets;
     private final ParallaxBackground background;
     private final Array<Bullet> bullets = new Array<>();
+    private final Array<Bullet.Effect> bulletEffects = new Array<>();
     private final Array<Enemy> enemies = new Array<>();
     private float fireCooldown;
-    private float enemySpawnTimer = ENEMY_INTERVAL;
+    private float enemySpawnTimer = randomEnemyInterval();
 
     private final Rectangle enemyBounds = new Rectangle();
 
@@ -35,8 +39,28 @@ final class GameWorld {
         enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
         enemyFrames = SpriteSheet.split(enemyTexture, "enemies/pink_j/jelly_run.png", 2, 3);
         mirroredEnemyFrames = SpriteSheet.mirror(enemyFrames);
+        bulletAssets = new Bullet.Assets();
         background = new ParallaxBackground();
-        enemies.add(new Enemy(ENEMY_SPAWN_X, PLAYER_GROUND_Y));
+        spawnEnemy();
+    }
+
+    private void spawnEnemy() {
+        float spawnY = MathUtils.random(ACTOR_MIN_Y, ACTOR_MAX_Y);
+        enemies.add(new Enemy(ENEMY_SPAWN_X, spawnY));
+    }
+
+    private static float randomEnemyInterval() {
+        return MathUtils.random(MIN_ENEMY_INTERVAL, MAX_ENEMY_INTERVAL);
+    }
+
+    private void updateBulletEffects(float delta) {
+        for (int i = bulletEffects.size - 1; i >= 0; i--) {
+            Bullet.Effect effect = bulletEffects.get(i);
+            effect.update(delta);
+            if (effect.isFinished()) {
+                bulletEffects.removeIndex(i);
+            }
+        }
     }
 
     void update(float delta, float horizontal, float vertical, boolean firing) {
@@ -51,40 +75,45 @@ final class GameWorld {
 
         enemySpawnTimer -= delta;
         if (enemySpawnTimer <= 0f) {
-            enemies.add(new Enemy(ENEMY_SPAWN_X, PLAYER_GROUND_Y));
-            enemySpawnTimer = ENEMY_INTERVAL;
+            spawnEnemy();
+            enemySpawnTimer = randomEnemyInterval();
         }
 
         updateBullets(delta);
         updateEnemies(delta);
         removeHitEnemies();
+        updateBulletEffects(delta);
         checkPlayerCollisions();
     }
 
     void shoot(int level) {
-        if (level < 1 || level > 3) {
+        Bullet.Strength strength = Bullet.Strength.fromValue(level);
+        if (strength == null) {
             return;
         }
 
+        int direction = player.getFacing();
         float centerY = player.getY() + Player.HEIGHT * 0.62f;
-        if (level == 1) {
-            addBullet(centerY, 0f, 8f, 3f, 220f, level);
-        } else if (level == 2) {
-            addBullet(centerY - 5f, 0f, 10f, 4f, 240f, level);
-            addBullet(centerY + 5f, 0f, 10f, 4f, 240f, level);
-        } else {
-            addBullet(centerY - 8f, 0f, 10f, 4f, 260f, level);
-            addBullet(centerY, 0f, 10f, 4f, 260f, level);
-            addBullet(centerY + 8f, 0f, 10f, 4f, 260f, level);
+        float muzzleX = direction > 0
+            ? player.getX() + Player.WIDTH + 2f
+            : player.getX() - 2f;
+        bulletEffects.add(new Bullet.Effect(
+            strength, Bullet.EffectType.MUZZLE_FLASH, muzzleX, centerY, direction
+        ));
+
+        for (int i = 0; i < strength.getProjectileCount(); i++) {
+            float offset = (i - (strength.getProjectileCount() - 1) / 2f) * strength.getSpread();
+            addBullet(centerY + offset, strength, direction);
         }
     }
 
-    private void addBullet(float y, float offset, float width, float height, float speed, int level) {
-        int direction = player.getFacing();
+    private void addBullet(float centerY, Bullet.Strength strength, int direction) {
+        float width = strength.getHitboxWidth();
         float x = direction > 0
-            ? player.getX() + Player.WIDTH + offset
-            : player.getX() - width - offset;
-        bullets.add(new Bullet(x, y, width, height, speed, direction, level));
+            ? player.getX() + Player.WIDTH
+            : player.getX() - width;
+        float y = centerY - strength.getHitboxHeight() / 2f;
+        bullets.add(new Bullet(x, y, strength, direction));
     }
 
     private void updateBullets(float delta) {
@@ -113,6 +142,13 @@ final class GameWorld {
             for (int enemyIndex = enemies.size - 1; enemyIndex >= 0; enemyIndex--) {
                 Enemy enemy = enemies.get(enemyIndex);
                 if (bullet.overlaps(enemy)) {
+                    bulletEffects.add(new Bullet.Effect(
+                        bullet.getStrength(),
+                        Bullet.EffectType.IMPACT,
+                        enemy.getX() + Enemy.SIZE / 2f,
+                        enemy.getY() + Enemy.SIZE / 2f,
+                        bullet.getDirection()
+                    ));
                     bullets.removeIndex(bulletIndex);
                     enemies.removeIndex(enemyIndex);
                     break;
@@ -142,9 +178,10 @@ final class GameWorld {
     void reset() {
         player.reset();
         bullets.clear();
+        bulletEffects.clear();
         enemies.clear();
-        enemies.add(new Enemy(ENEMY_SPAWN_X, PLAYER_GROUND_Y));
-        enemySpawnTimer = ENEMY_INTERVAL;
+        spawnEnemy();
+        enemySpawnTimer = randomEnemyInterval();
         fireCooldown = 0f;
     }
 
@@ -171,9 +208,12 @@ final class GameWorld {
         }
     }
 
-    void renderBullets(ShapeRenderer renderer) {
+    void renderBullets(SpriteBatch batch) {
+        for (Bullet.Effect effect : bulletEffects) {
+            effect.render(batch, bulletAssets);
+        }
         for (Bullet bullet : bullets) {
-            bullet.render(renderer);
+            bullet.render(batch, bulletAssets);
         }
     }
 
@@ -181,5 +221,6 @@ final class GameWorld {
         background.dispose();
         player.dispose();
         enemyTexture.dispose();
+        bulletAssets.dispose();
     }
 }

@@ -13,22 +13,18 @@ final class Player {
 
     private static final float SPEED = 100f;
     private static final float VERTICAL_SPEED = 80f;
-    private static final float GROUND_Y = 2f;
-    private static final float MAX_Y = GROUND_Y + 20f;
-    private static final int[] MOVEMENT_FRAMES = {1, 2, 4, 5, 7, 8};
 
     private final Texture texture;
     private final TextureRegion[][] frames;
     private final TextureRegion[][] mirroredFrames;
+    private final PlayerMovementAnimation movementAnimation = new PlayerMovementAnimation();
     private float x = 48f;
-    private float y = GROUND_Y;
-    private float animationTime;
+    private float y = GameWorld.ACTOR_MIN_Y;
     private int facing = 1;
-    private boolean moving;
     private boolean firing;
 
     static final int MAX_LIVES = 3;
-    private static final float INVULNERABLE_TIME = 1.5f;
+    private static final float INVULNERABLE_TIME = 1f;
 
     private final Rectangle bounds = new Rectangle();
     private int lives = MAX_LIVES;
@@ -45,13 +41,12 @@ final class Player {
         x += horizontal * SPEED * delta;
         y += vertical * VERTICAL_SPEED * delta;
         x = MathUtils.clamp(x, 0f, GameWorld.WORLD_WIDTH - WIDTH);
-        y = MathUtils.clamp(y, GROUND_Y, MAX_Y);
+        y = MathUtils.clamp(y, GameWorld.ACTOR_MIN_Y, GameWorld.ACTOR_MAX_Y);
         if (horizontal != 0f) {
             facing = horizontal > 0f ? 1 : -1;
         }
-        moving = horizontal != 0f || vertical != 0f;
+        movementAnimation.update(delta, horizontal != 0f || vertical != 0f);
         this.firing = firing;
-        animationTime = moving ? animationTime + delta : 0f;
 
         if (invulnerableTimer > 0f) invulnerableTimer -= delta;
 
@@ -60,7 +55,7 @@ final class Player {
     void render(SpriteBatch batch) {
         int frameIndex = firing
             ? 0
-            : moving ? MOVEMENT_FRAMES[(int) (animationTime * 8f) % MOVEMENT_FRAMES.length] : 1;
+            : movementAnimation.getFrameIndex();
         TextureRegion frame = facing > 0
             ? frames[frameIndex / 3][frameIndex % 3]
             : mirroredFrames[frameIndex / 3][frameIndex % 3];
@@ -88,13 +83,12 @@ final class Player {
 
     void reset() {
         x = 48f;
-        y = GROUND_Y;
+        y = GameWorld.ACTOR_MIN_Y;
         lives = MAX_LIVES;
         invulnerableTimer = 0f;
         facing = 1;
-        moving = false;
+        movementAnimation.reset();
         firing = false;
-        animationTime = 0f;
     }
 
     float getX() {

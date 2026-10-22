@@ -80,12 +80,12 @@ public class Main extends ApplicationAdapter {
         batch.begin();
         gameWorld.renderBackground(batch);
         if (state != State.MENU) gameWorld.renderActors(batch);
+        if (state != State.MENU) gameWorld.renderBullets(batch);
         batch.end();
 
         if (state != State.MENU) {
             shapeRenderer.setProjectionMatrix(camera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            gameWorld.renderBullets(shapeRenderer);
             drawForceBar(gameController.getForce());
             drawHearts();
             shapeRenderer.end();
