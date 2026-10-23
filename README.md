@@ -1,24 +1,22 @@
-# HandGrip Shooter 
+# HandGrip Shooter
 
 ## Sobre o projeto
 
-O **HandGrip Shooter** é um projeto extensionista que propõe unir tecnologia, jogos digitais e mobilidade da mão por meio de um jogo de tiro 2D desenvolvido em **Java com o framework libGDX**.
+O **HandGrip Shooter** é um projeto extensionista que une tecnologia, jogos digitais e mobilidade da mão por meio de um jogo de tiro 2D desenvolvido em **Java com o framework libGDX**.
 
-A proposta é utilizar um hand grip como controle físico do jogo, permitindo que o jogador dispare projéteis ao apertar o dispositivo. A intensidade do aperto será captada por um sensor de pressão FSR402 e interpretada por um ESP32, possibilitando diferentes tipos de disparos de acordo com a força aplicada.
+O jogo utiliza um hand grip como controle físico, permitindo que o jogador dispare projéteis ao apertar o dispositivo. A pressão é captada por um sensor FSR402 e interpretada por um ESP32, que envia os dados ao computador para controlar as ações do jogo.
 
 ## Objetivo extensionista
 
-O projeto busca explorar o potencial dos jogos digitais como ferramentas de interação e incentivo à realização de movimentos com as mãos. A ideia é oferecer uma experiência lúdica que associe o movimento de apertar e soltar o hand grip a desafios dentro do jogo, tornando a atividade mais interativa e envolvente.
+O projeto busca explorar o potencial dos jogos digitais como ferramentas de incentivo à realização de movimentos com as mãos. Por meio da gamificação, a proposta transforma o movimento de apertar e soltar o hand grip em ações dentro do jogo, tornando a experiência mais interativa.
 
-A proposta também busca aproximar a tecnologia da comunidade, demonstrando como a programação e os componentes eletrônicos podem ser utilizados no desenvolvimento de soluções acessíveis e criativas, com potencial de apoio a atividades de mobilidade e controle motor da mão.
-
-O jogo não tem como objetivo substituir tratamentos ou exercícios orientados por profissionais de saúde, mas explorar uma possibilidade de gamificação dessas atividades.
+A iniciativa também busca demonstrar como a programação e os componentes eletrônicos podem ser utilizados em soluções criativas com potencial de apoio a atividades de mobilidade e controle motor da mão. O jogo não substitui tratamentos ou exercícios orientados por profissionais de saúde.
 
 ## Tecnologias e componentes
 
-- **Java:** linguagem de programação utilizada no desenvolvimento do jogo.
+- **Java:** linguagem utilizada no desenvolvimento do jogo.
 - **libGDX:** framework para criação do jogo 2D.
-- **ESP32:** microcontrolador responsável por processar as leituras do sensor e enviá-las ao computador.
+- **ESP32:** microcontrolador responsável pela leitura do sensor e pelo envio dos dados ao computador.
 - **FSR402:** sensor de pressão que detecta a intensidade relativa do aperto.
 - **Hand grip:** dispositivo físico utilizado como controle.
 - **Resistor de 10 kΩ e conexões:** componentes utilizados no circuito de leitura do sensor.
@@ -32,17 +30,26 @@ O jogo não tem como objetivo substituir tratamentos ou exercícios orientados p
 
 ### Mecânica dos disparos
 
-| Intensidade do aperto | Ação no jogo |
-|---|---|
-| Sem pressão | Personagem aguarda |
-| Aperto leve | Disparo simples |
-| Aperto moderado | Disparo reforçado |
-| Aperto forte | Disparo especial ou múltiplos projéteis |
+| Intensidade do aperto | Ação no jogo                            |
+| --------------------- | --------------------------------------- |
+| Sem pressão           | Personagem aguarda                      |
+| Aperto leve           | Disparo simples                         |
+| Aperto moderado       | Disparo reforçado                       |
+| Aperto forte          | Disparo especial ou múltiplos projéteis |
+
+## Fases do jogo
+
+O jogo possui três fases com mudanças de cenário e dificuldade progressiva:
+
+Fase 1 — Dia: o jogo começa em um ambiente diurno, introduzindo a mecânica de combate.
+
+Fase 2 — Tarde: o cenário passa gradualmente para o entardecer, criando uma mudança visual no ambiente.
+
+Fase 3 — Noite: o cenário fica noturno e os monstros se tornam mais fortes, com olhos vermelhos brilhantes, aumentando o desafio para o jogador.
+
+A progressão das fases aumenta o desafio e incentiva o jogador a continuar interagindo com o dispositivo para avançar no jogo.
 
 ## Resultados esperados
 
-Espera-se desenvolver um protótipo funcional que integre hardware e software, explore diferentes intensidades de movimento e ofereça uma experiência de jogo interativa. O projeto também pretende demonstrar como a gamificação pode ser explorada em atividades relacionadas à mobilidade e ao controle motor, abrindo possibilidades para futuras melhorias e avaliações com o público-alvo.
+Espera-se desenvolver um protótipo funcional que integre hardware e software, utilizando os movimentos realizados com o hand grip como controle do jogo. A proposta também busca explorar a gamificação como forma de incentivar a prática de movimentos manuais e possibilitar futuras melhorias na avaliação da interação e do desempenho do jogador.
 
-## Status do projeto
-
-🚧 Em desenvolvimento.
