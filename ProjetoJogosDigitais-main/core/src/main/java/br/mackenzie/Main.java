@@ -26,7 +26,7 @@ public class Main extends ApplicationAdapter {
     private GameWorld gameWorld;
     private GameController gameController;
 
-    private enum State { MENU, PLAYING, GAME_OVER }
+    private enum State { MENU, PLAYING, PAUSED, GAME_OVER }
     private State state = State.MENU;
 
     private static final Color PANEL  = Color.valueOf("2A0E3D");
@@ -39,6 +39,8 @@ public class Main extends ApplicationAdapter {
     private final GlyphLayout layout = new GlyphLayout();
     private final Vector3 touch = new Vector3();
     private Rectangle btnStart, btnExit;
+    private Rectangle btnResume, btnRestart, btnToMenu;
+    private boolean hoverResume, hoverRestart, hoverToMenu;
     private boolean hoverStart, hoverExit;
 
     @Override
@@ -57,6 +59,10 @@ public class Main extends ApplicationAdapter {
         float bw = 130f, bh = 22f, cx = GameWorld.WORLD_WIDTH / 2f;
         btnStart = new Rectangle(cx - bw / 2f, GameWorld.WORLD_HEIGHT * 0.45f, bw, bh);
         btnExit  = new Rectangle(cx - bw / 2f, GameWorld.WORLD_HEIGHT * 0.45f - 30f, bw, bh);
+        float py = GameWorld.WORLD_HEIGHT * 0.52f;
+        btnResume  = new Rectangle(cx - bw / 2f, py,        bw, bh);
+        btnRestart = new Rectangle(cx - bw / 2f, py - 30f,  bw, bh);
+        btnToMenu  = new Rectangle(cx - bw / 2f, py - 60f,  bw, bh);
 
         gameWorld = new GameWorld();
         gameController = new GameController(gameWorld, "COM3");
@@ -67,11 +73,11 @@ public class Main extends ApplicationAdapter {
     public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.05f);
 
-        if (state != State.PLAYING) handleMenuInput();
-
         if (state == State.PLAYING) {
-            gameController.update(delta);
-            if (gameWorld.getPlayer().isDead()) state = State.GAME_OVER;
+            updatePlaying(delta);
+        } else {
+            gameController.clearPendingShots();
+            handleMenuInput();
         }
         camera.update();
 
@@ -92,13 +98,17 @@ public class Main extends ApplicationAdapter {
 
             if (state == State.PLAYING) {
                 batch.begin();
-                font.draw(batch, "ESP32 - forca", 10f, 161f);
-                font.draw(batch, "Setas: mover  |  Espaco: tiro  |  1-3: testar", 10f, 12f);
+                GameStats stats = gameWorld.getStats();
+                int p = stats.getPhaseNumber();
+                font.draw(batch, "Fase " + p + "  Apertos: " + stats.getSqueezes(p - 1)
+                    + "  Pontos: " + stats.getTotalScore(), 10f, 147f);
+                font.draw(batch, "Setas: mover  |  Espaco: tiro  |  ESC: pausar", 10f, 12f);
                 batch.end();
             }
         }
 
-        if (state != State.PLAYING) drawMenuScreen();
+        if (state == State.PAUSED) drawPauseScreen();
+        else if (state != State.PLAYING) drawMenuScreen();
     }
 
     private void drawForceBar(int force) {
@@ -114,12 +124,108 @@ public class Main extends ApplicationAdapter {
         state = State.PLAYING;
     }
 
+    private void updatePlaying(float delta) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.P)) {
+            state = State.PAUSED;
+            return;
+        }
+        gameController.update(delta);
+        if (gameWorld.getPlayer().isDead()) state = State.GAME_OVER;
+    }
+
+    @Override
+    public void pause() {
+        if (state == State.PLAYING) state = State.PAUSED;
+    }
+
+    private void drawSummary(float top) {
+        GameStats s = gameWorld.getStats();
+        float[] col = {55f, 105f, 170f, 235f};
+        float lineH = 12f;
+
+        font.setColor(YELLOW);
+        font.draw(batch, "Fase", col[0], top);
+        font.draw(batch, "Apertos", col[1], top);
+        font.draw(batch, "Pontos", col[2], top);
+        font.draw(batch, "Aper./min", col[3], top);
+
+        font.setColor(CREAM);
+        for (int i = 0; i < s.getPhaseNumber(); i++) {
+            float y = top - lineH * (i + 1);
+            font.draw(batch, String.valueOf(i + 1), col[0], y);
+            font.draw(batch, String.valueOf(s.getSqueezes(i)), col[1], y);
+            font.draw(batch, String.valueOf(s.getScore(i)), col[2], y);
+            font.draw(batch, String.format("%.1f", s.getSqueezesPerMinute(i)), col[3], y);
+        }
+
+        float yTotal = top - lineH * (s.getPhaseNumber() + 1);
+        font.setColor(ORANGE);
+        font.draw(batch, "Total", col[0], yTotal);
+        font.draw(batch, String.valueOf(s.getTotalSqueezes()), col[1], yTotal);
+        font.draw(batch, String.valueOf(s.getTotalScore()), col[2], yTotal);
+        font.draw(batch, String.format("%.1f", s.getTotalSqueezesPerMinute()), col[3], yTotal);
+    }
+
+    private void drawPauseScreen() {
+        float w = GameWorld.WORLD_WIDTH, h = GameWorld.WORLD_HEIGHT;
+
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.10f, 0.03f, 0.18f, 0.70f);
+        shapeRenderer.rect(0f, 0f, w, h);
+        drawButton(btnResume, hoverResume);
+        drawButton(btnRestart, hoverRestart);
+        drawButton(btnToMenu, hoverToMenu);
+        shapeRenderer.end();
+
+        batch.begin();
+        font.getData().setScale(2f);
+        drawCentered("PAUSADO", h * 0.82f, ORANGE);
+        font.getData().setScale(1f);
+        drawButtonLabel(btnResume, "Continuar", hoverResume);
+        drawButtonLabel(btnRestart, "Reiniciar", hoverRestart);
+        drawButtonLabel(btnToMenu, "Menu principal", hoverToMenu);
+        drawCentered("ESC: continuar  |  R: reiniciar  |  M: menu", 12f, CREAM);
+        font.setColor(Color.WHITE);
+        batch.end();
+    }
+
+    private void layoutMenuButtons() {
+        float w = GameWorld.WORLD_WIDTH, h = GameWorld.WORLD_HEIGHT;
+        float bw = 130f, bh = 22f, cx = w / 2f;
+        if (state == State.GAME_OVER) {
+            btnStart.set(cx - bw - 5f, 8f, bw, bh);
+            btnExit.set(cx + 5f, 8f, bw, bh);
+        } else {
+            btnStart.set(cx - bw / 2f, h * 0.45f, bw, bh);
+            btnExit.set(cx - bw / 2f, h * 0.45f - 30f, bw, bh);
+        }
+    }
+
     private void handleMenuInput() {
+        layoutMenuButtons();
         touch.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
         viewport.unproject(touch);
         hoverStart = btnStart.contains(touch.x, touch.y);
         hoverExit = btnExit.contains(touch.x, touch.y);
         boolean click = Gdx.input.justTouched();
+
+        if (state == State.PAUSED) {
+            hoverResume  = btnResume.contains(touch.x, touch.y);
+            hoverRestart = btnRestart.contains(touch.x, touch.y);
+            hoverToMenu  = btnToMenu.contains(touch.x, touch.y);
+
+            if ((click && hoverResume) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)
+                || Gdx.input.isKeyJustPressed(Input.Keys.P)) {
+                state = State.PLAYING;
+            } else if ((click && hoverRestart) || Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+                startGame();
+            } else if ((click && hoverToMenu) || Gdx.input.isKeyJustPressed(Input.Keys.M)) {
+                state = State.MENU;
+            }
+            return;
+        }
 
         if ((click && hoverStart) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
             startGame();
@@ -137,7 +243,7 @@ public class Main extends ApplicationAdapter {
     }
 
     private void drawHearts() {
-        int lives = gameWorld.getPlayer().getLives();
+        int lives = gameWorld.getPlayer().getHp();
         for (int i = 0; i < Player.MAX_LIVES; i++) {
             drawHeart(GameWorld.WORLD_WIDTH - 12f - i * 14f, GameWorld.WORLD_HEIGHT - 12f, 4f, i < lives);
         }
@@ -182,7 +288,6 @@ public class Main extends ApplicationAdapter {
         boolean over = state == State.GAME_OVER;
         float w = GameWorld.WORLD_WIDTH, h = GameWorld.WORLD_HEIGHT;
 
-        // Película escura sobre o fundo do jogo + botões
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -195,7 +300,7 @@ public class Main extends ApplicationAdapter {
         batch.begin();
         font.getData().setScale(2f);
         if (over) {
-            drawCentered("GAME OVER", h * 0.78f, ORANGE);
+            drawCentered("GAME OVER", h * 0.90f, ORANGE);
         } else {
             float gap = 6f;
             layout.setText(font, "HandGrip");
@@ -209,6 +314,7 @@ public class Main extends ApplicationAdapter {
         }
         font.getData().setScale(1f);
 
+        if (over) drawSummary(h * 0.70f);
 
         drawButtonLabel(btnStart, over ? "Jogar novamente" : "Jogar", hoverStart);
         drawButtonLabel(btnExit, over ? "Menu" : "Sair", hoverExit);

@@ -23,11 +23,12 @@ final class Player {
     private int facing = 1;
     private boolean firing;
 
-    static final int MAX_LIVES = 3;
+    static final int MAX_LIVES = 4;
+    static final int MAX_HP = MAX_LIVES * 2;
     private static final float INVULNERABLE_TIME = 1f;
 
     private final Rectangle bounds = new Rectangle();
-    private int lives = MAX_LIVES;
+    private int hp = MAX_HP;
     private float invulnerableTimer;
 
     Player(String assetPath) {
@@ -53,6 +54,7 @@ final class Player {
     }
 
     void render(SpriteBatch batch) {
+        if (invulnerableTimer > 0f && ((int) (invulnerableTimer * 12f)) % 2 == 0) return;
         int frameIndex = firing
             ? 0
             : movementAnimation.getFrameIndex();
@@ -62,29 +64,27 @@ final class Player {
         float drawWidth = HEIGHT * frame.getRegionWidth() / frame.getRegionHeight();
         batch.draw(frame, x + (WIDTH - drawWidth) / 2f, y, drawWidth, HEIGHT);
 
-        if (invulnerableTimer > 0f && ((int) (invulnerableTimer * 12f)) % 2 == 0) return;
     }
 
     Rectangle getBounds() {
         return bounds.set(x + 8f, y, WIDTH - 16f, HEIGHT);
     }
 
-    /** Retorna true se realmente perdeu vida (não estava invulnerável). */
-    boolean hit() {
-        if (invulnerableTimer > 0f || lives <= 0) return false;
-        lives--;
+    boolean hit(int damage) {
+        if (invulnerableTimer > 0f || hp <= 0) return false;
+        hp = Math.max(0, hp - damage);
         invulnerableTimer = INVULNERABLE_TIME;
         return true;
     }
 
-    int getLives() { return lives; }
+    int getHp() { return hp; }
 
-    boolean isDead() { return lives <= 0; }
+    boolean isDead() { return hp <= 0; }
 
     void reset() {
         x = 48f;
         y = GameWorld.ACTOR_MIN_Y;
-        lives = MAX_LIVES;
+        hp = MAX_LIVES;
         invulnerableTimer = 0f;
         facing = 1;
         movementAnimation.reset();

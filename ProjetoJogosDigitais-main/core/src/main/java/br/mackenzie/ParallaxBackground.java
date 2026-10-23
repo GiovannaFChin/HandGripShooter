@@ -67,4 +67,9 @@ final class ParallaxBackground {
             }
         }
     }
+    void reset() {
+        for (Layer layer : layers) {
+            layer.offset = 0f;
+        }
+    }
 }

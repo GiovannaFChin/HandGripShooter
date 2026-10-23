@@ -5,8 +5,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
 
 final class GameWorld {
     static final float WORLD_WIDTH = 320f;
@@ -25,6 +25,7 @@ final class GameWorld {
     private final TextureRegion[][] mirroredEnemyFrames;
     private final Bullet.Assets bulletAssets;
     private final ParallaxBackground background;
+    private final GameStats stats = new GameStats();
     private final Array<Bullet> bullets = new Array<>();
     private final Array<Bullet.Effect> bulletEffects = new Array<>();
     private final Array<Enemy> enemies = new Array<>();
@@ -64,6 +65,7 @@ final class GameWorld {
     }
 
     void update(float delta, float horizontal, float vertical, boolean firing) {
+        stats.update(delta);   // tempo de jogo da fase (a pausa não conta)
         player.update(delta, horizontal, vertical, firing);
         background.update(delta);
 
@@ -84,6 +86,12 @@ final class GameWorld {
         removeHitEnemies();
         updateBulletEffects(delta);
         checkPlayerCollisions();
+    }
+
+    /** Aperto válido vindo do hand grip: conta o aperto e dispara. Os pontos vêm só ao acertar. */
+    void registerSqueeze(int level) {
+        stats.registerSqueeze();
+        shoot(level);
     }
 
     void shoot(int level) {
@@ -149,6 +157,9 @@ final class GameWorld {
                         enemy.getY() + Enemy.SIZE / 2f,
                         bullet.getDirection()
                     ));
+                    // Pontos só quando o tiro acerta um inimigo.
+                    // ordinal() + 1 assume que o enum Strength está na ordem leve, moderado, forte.
+                    stats.registerHit(bullet.getStrength().ordinal() + 1);
                     bullets.removeIndex(bulletIndex);
                     enemies.removeIndex(enemyIndex);
                     break;
@@ -161,22 +172,38 @@ final class GameWorld {
         return player;
     }
 
-    /** Inimigo que encosta no player some e tira uma vida. */
+    GameStats getStats() {
+        return stats;
+    }
+
+    /** Chame quando o jogador cumprir a meta da fase. */
+    void advancePhase() {
+        stats.nextPhase();
+    }
+
+    /** Dano por inimigo, em pontos de vida: 1 = meio coração, 2 = coração inteiro. */
+    private int enemyDamage() {
+        return stats.getPhaseNumber() == 1 ? 1 : 2;
+    }
+
+    /** Inimigo que encosta no player some e tira vida. */
     private void checkPlayerCollisions() {
         Rectangle playerBounds = player.getBounds();
         for (int i = enemies.size - 1; i >= 0; i--) {
             Enemy enemy = enemies.get(i);
             enemyBounds.set(enemy.getX() + 3f, enemy.getY(), Enemy.SIZE - 6f, Enemy.SIZE);
             if (playerBounds.overlaps(enemyBounds)) {
-                player.hit();
+                player.hit(enemyDamage());
                 enemies.removeIndex(i);
             }
         }
     }
 
-    /** Reinicia a partida (usado ao clicar em Start Game ou Jogar novamente). */
+    /** Reinicia a partida (usado ao clicar em Jogar, Jogar novamente ou Reiniciar). */
     void reset() {
         player.reset();
+        background.reset();
+        stats.reset();
         bullets.clear();
         bulletEffects.clear();
         enemies.clear();

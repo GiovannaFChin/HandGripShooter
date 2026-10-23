@@ -6,6 +6,7 @@ import com.badlogic.gdx.Input;
 public final class GameController {
     private final GameWorld gameWorld;
     private final ArduinoReaderThread arduino;
+    private static final boolean TEST_MODE = true;
 
     public GameController(GameWorld gameWorld, String serialPort) {
         this.gameWorld = gameWorld;
@@ -36,21 +37,22 @@ public final class GameController {
 
         Integer level;
         while ((level = arduino.pollTiro()) != null) {
-            gameWorld.shoot(level);
+            gameWorld.registerSqueeze(level);
         }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
-            gameWorld.shoot(1);
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
-            gameWorld.shoot(2);
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
-            gameWorld.shoot(3);
+        if (TEST_MODE) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) gameWorld.registerSqueeze(1);
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) gameWorld.registerSqueeze(2);
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) gameWorld.registerSqueeze(3);
+            if (Gdx.input.isKeyJustPressed(Input.Keys.N)) gameWorld.advancePhase();
         }
     }
 
     public int getForce() {
         return arduino.getForca();
+    }
+    public void clearPendingShots() {
+        while (arduino.pollTiro() != null) {
+        }
     }
 
     public void dispose() {
