@@ -1,6 +1,7 @@
 package br.mackenzie;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -47,7 +48,7 @@ final class GameWorld {
 
     private void spawnEnemy() {
         float spawnY = MathUtils.random(ACTOR_MIN_Y, ACTOR_MAX_Y);
-        enemies.add(new Enemy(ENEMY_SPAWN_X, spawnY));
+        enemies.add(new Enemy(ENEMY_SPAWN_X, spawnY, background.getElapsed()));
     }
 
     private static float randomEnemyInterval() {
@@ -138,7 +139,7 @@ final class GameWorld {
         for (int i = enemies.size - 1; i >= 0; i--) {
             Enemy enemy = enemies.get(i);
             enemy.update(delta, player.getX());
-            if (enemy.isOutside(WORLD_WIDTH)) {
+            if (enemy.isOutside(WORLD_WIDTH) || background.getEnemyAlpha(enemy.getSpawnTime()) <= 0f) {
                 enemies.removeIndex(i);
             }
         }
@@ -218,6 +219,7 @@ final class GameWorld {
 
     void renderActors(SpriteBatch batch) {
         player.render(batch);
+        Color originalColor = new Color(batch.getColor());
         for (Enemy enemy : enemies) {
             int frameIndex = (int) (enemy.getAnimationTime() * 8f) % 6;
             boolean playerIsLeft = player.getX() + Player.WIDTH / 2f
@@ -225,6 +227,12 @@ final class GameWorld {
             TextureRegion frame = (playerIsLeft ? enemyFrames : mirroredEnemyFrames)
                 [frameIndex / 2][frameIndex % 2];
             float drawWidth = Enemy.SIZE * frame.getRegionWidth() / frame.getRegionHeight();
+            batch.setColor(
+                originalColor.r,
+                originalColor.g,
+                originalColor.b,
+                originalColor.a * background.getEnemyAlpha(enemy.getSpawnTime())
+            );
             batch.draw(
                 frame,
                 enemy.getX() + (Enemy.SIZE - drawWidth) / 2f,
@@ -233,6 +241,7 @@ final class GameWorld {
                 Enemy.SIZE
             );
         }
+        batch.setColor(originalColor);
     }
 
     void renderBullets(SpriteBatch batch) {

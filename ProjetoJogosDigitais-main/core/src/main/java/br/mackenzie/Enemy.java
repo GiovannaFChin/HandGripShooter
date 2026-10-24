@@ -5,11 +5,13 @@ final class Enemy {
 
     private float x;
     private final float y;
+    private final float spawnTime;
     private float animationTime;
 
-    Enemy(float x, float y) {
+    Enemy(float x, float y, float spawnTime) {
         this.x = x;
         this.y = y;
+        this.spawnTime = spawnTime;
     }
 
     void update(float delta, float playerX) {
@@ -33,5 +35,9 @@ final class Enemy {
 
     float getAnimationTime() {
         return animationTime;
+    }
+
+    float getSpawnTime() {
+        return spawnTime;
     }
 }
