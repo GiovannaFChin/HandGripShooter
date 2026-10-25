@@ -3,7 +3,13 @@ eclipse.project.name = appName + '-core'
 
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+  api "com.badlogicgames.box2dlights:box2dlights:1.5"
   api "com.fazecast:jSerialComm:2.11.0"
+  implementation "io.github.bennyoe:gdx-normal-light:1.0.1"
+  implementation "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"
+  implementation "io.github.libktx:ktx-assets:1.13.1-rc1"
+  api "io.github.libktx:ktx-math:1.13.1-rc1"
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
   }

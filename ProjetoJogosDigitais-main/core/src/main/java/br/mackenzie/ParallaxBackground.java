@@ -9,6 +9,32 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 
 final class ParallaxBackground {
+    enum Period { MORNING, AFTERNOON, NIGHT }
+
+    static final class CycleState {
+        private Period period = Period.MORNING;
+        private Period nextPeriod = Period.MORNING;
+        private float fadeProgress;
+
+        Period getPeriod() {
+            return period;
+        }
+
+        Period getNextPeriod() {
+            return nextPeriod;
+        }
+
+        float getFadeProgress() {
+            return fadeProgress;
+        }
+
+        private void set(Period period, Period nextPeriod, float fadeProgress) {
+            this.period = period;
+            this.nextPeriod = nextPeriod;
+            this.fadeProgress = fadeProgress;
+        }
+    }
+
     private static final String[] LAYER_NAMES = {
         "00_ceu", "01_nuvens_longe", "02_nuvens_perto",
         "03_colinas_longe", "04_colinas_perto", "05_floresta_longe",
@@ -24,6 +50,7 @@ final class ParallaxBackground {
     private final Scene morning;
     private final Scene afternoon;
     private final Scene night;
+    private final CycleState renderCycleState = new CycleState();
     private float elapsed;
 
     ParallaxBackground() {
@@ -41,21 +68,60 @@ final class ParallaxBackground {
     }
 
     void render(SpriteBatch batch) {
+        CycleState cycleState = getCycleState();
+        if (cycleState.period != cycleState.nextPeriod) {
+            Scene outgoing = getScene(cycleState.period);
+            Scene incoming = getScene(cycleState.nextPeriod);
+            renderTransition(batch, outgoing, incoming, cycleState.fadeProgress);
+        } else {
+            getScene(cycleState.period).render(batch);
+        }
+    }
+
+    CycleState getCycleState() {
         float morningTransitionStart = MORNING_DURATION - TRANSITION_DURATION;
         float nightTransitionStart = MORNING_DURATION + AFTERNOON_DURATION - TRANSITION_DURATION;
 
         if (elapsed < morningTransitionStart) {
-            morning.render(batch);
+            renderCycleState.set(Period.MORNING, Period.MORNING, 0f);
         } else if (elapsed < MORNING_DURATION) {
-            renderTransition(batch, morning, afternoon,
-                (elapsed - morningTransitionStart) / TRANSITION_DURATION);
+            renderCycleState.set(
+                Period.MORNING,
+                Period.AFTERNOON,
+                (elapsed - morningTransitionStart) / TRANSITION_DURATION
+            );
         } else if (elapsed < nightTransitionStart) {
-            afternoon.render(batch);
+            renderCycleState.set(Period.AFTERNOON, Period.AFTERNOON, 0f);
         } else if (elapsed < MORNING_DURATION + AFTERNOON_DURATION) {
-            renderTransition(batch, afternoon, night,
-                (elapsed - nightTransitionStart) / TRANSITION_DURATION);
+            renderCycleState.set(
+                Period.AFTERNOON,
+                Period.NIGHT,
+                (elapsed - nightTransitionStart) / TRANSITION_DURATION
+            );
         } else {
-            night.render(batch);
+            renderCycleState.set(Period.NIGHT, Period.NIGHT, 0f);
+        }
+        return renderCycleState;
+    }
+
+    float getLayerOffset(String layerName) {
+        return morning.getLayerOffset(layerName);
+    }
+
+    float getLayerWidth(String layerName) {
+        return morning.getLayerWidth(layerName);
+    }
+
+    private Scene getScene(Period period) {
+        switch (period) {
+            case MORNING:
+                return morning;
+            case AFTERNOON:
+                return afternoon;
+            case NIGHT:
+                return night;
+            default:
+                throw new IllegalArgumentException("Unknown day period: " + period);
         }
     }
 
@@ -141,6 +207,23 @@ final class ParallaxBackground {
             for (Layer layer : layers) {
                 layer.offset = 0f;
             }
+        }
+
+        private float getLayerOffset(String layerName) {
+            return getLayer(layerName).offset;
+        }
+
+        private float getLayerWidth(String layerName) {
+            return getLayer(layerName).width;
+        }
+
+        private Layer getLayer(String layerName) {
+            for (int i = 0; i < LAYER_NAMES.length; i++) {
+                if (LAYER_NAMES[i].equals(layerName)) {
+                    return layers.get(i);
+                }
+            }
+            throw new IllegalArgumentException("Unknown background layer: " + layerName);
         }
     }
 

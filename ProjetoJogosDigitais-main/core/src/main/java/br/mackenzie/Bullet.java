@@ -249,6 +249,7 @@ final class Bullet {
         private final float y;
         private final int direction;
         private float elapsed;
+        private boolean impactLightClaimed;
 
         Effect(Strength strength, EffectType type, float x, float y, int direction) {
             this.strength = strength;
@@ -267,6 +268,30 @@ final class Bullet {
                 ? strength.muzzleFlashFrames
                 : strength.impactFrames;
             return elapsed >= frames * EFFECT_FRAME_DURATION;
+        }
+
+        EffectType getType() {
+            return type;
+        }
+
+        float getX() {
+            return x;
+        }
+
+        float getY() {
+            return y;
+        }
+
+        float getElapsed() {
+            return elapsed;
+        }
+
+        boolean isImpactLightClaimed() {
+            return impactLightClaimed;
+        }
+
+        void claimImpactLight() {
+            impactLightClaimed = true;
         }
 
         void render(SpriteBatch batch, Assets assets) {
@@ -323,6 +348,26 @@ final class Bullet {
 
     int getDirection() {
         return direction;
+    }
+
+    float getX() {
+        return x;
+    }
+
+    float getY() {
+        return y;
+    }
+
+    float getElapsed() {
+        return elapsed;
+    }
+
+    float getCenterX() {
+        return x + strength.hitboxWidth / 2f;
+    }
+
+    float getCenterY() {
+        return y + strength.hitboxHeight / 2f;
     }
 
     private static int frameIndex(float elapsed, int frameCount, float frameDuration) {

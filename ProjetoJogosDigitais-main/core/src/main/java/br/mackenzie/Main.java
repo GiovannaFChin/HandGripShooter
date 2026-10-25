@@ -5,6 +5,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -18,9 +20,14 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 
 public class Main extends ApplicationAdapter {
+    private static final boolean LIGHT_SPIKE = true;
+    private static final boolean DEBUG_LIGHTS = false;
+
     private OrthographicCamera camera;
     private FitViewport viewport;
     private SpriteBatch batch;
+    private FrameBuffer sceneFrameBuffer;
+    private LightingManager lightingManager;
     private ShapeRenderer shapeRenderer;
     private BitmapFont font;
     private GameWorld gameWorld;
@@ -51,6 +58,20 @@ public class Main extends ApplicationAdapter {
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         batch = new SpriteBatch();
+        if (LIGHT_SPIKE) {
+            sceneFrameBuffer = new FrameBuffer(
+                Pixmap.Format.RGBA8888,
+                (int) GameWorld.WORLD_WIDTH,
+                (int) GameWorld.WORLD_HEIGHT,
+                false
+            );
+            sceneFrameBuffer.getColorBufferTexture().setFilter(
+                Texture.TextureFilter.Nearest,
+                Texture.TextureFilter.Nearest
+            );
+            lightingManager = new LightingManager(camera, batch, viewport);
+            lightingManager.init();
+        }
         shapeRenderer = new ShapeRenderer();
         font = new BitmapFont();
 
@@ -83,11 +104,66 @@ public class Main extends ApplicationAdapter {
 
         ScreenUtils.clear(0f, 0f, 0f, 1f);
         batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        gameWorld.renderBackground(batch);
-        if (state != State.MENU) gameWorld.renderActors(batch);
-        if (state != State.MENU) gameWorld.renderBullets(batch);
-        batch.end();
+        if (LIGHT_SPIKE) {
+            lightingManager.updateFog(
+                gameWorld.getElapsed(),
+                gameWorld.getCycleState(),
+                gameWorld.getLayerOffset("10_chao_e_props")
+            );
+            sceneFrameBuffer.begin();
+            ScreenUtils.clear(0f, 0f, 0f, 1f);
+            batch.begin();
+            gameWorld.renderBackground(batch);
+            lightingManager.renderFog();
+            if (state != State.MENU) {
+                lightingManager.renderShadows(gameWorld, gameWorld.getCycleState());
+            }
+            if (state != State.MENU) gameWorld.renderActors(batch);
+            if (state != State.MENU) gameWorld.renderBullets(batch);
+            batch.end();
+            sceneFrameBuffer.end();
+
+            lightingManager.update(
+                delta,
+                gameWorld.getCycleState(),
+                gameWorld.getElapsed(),
+                gameWorld.getLayerOffset("10_chao_e_props"),
+                gameWorld.getLayerWidth("10_chao_e_props"),
+                gameWorld.getLayerOffset("09_vila_perto"),
+                gameWorld.getLayerWidth("09_vila_perto"),
+                DEBUG_LIGHTS,
+                gameWorld
+            );
+            lightingManager.render(sceneFrameBuffer.getColorBufferTexture());
+            batch.setShader(null);
+        } else {
+            batch.begin();
+            gameWorld.renderBackground(batch);
+            if (state != State.MENU) gameWorld.renderActors(batch);
+            if (state != State.MENU) gameWorld.renderBullets(batch);
+            batch.end();
+        }
+
+        if (LIGHT_SPIKE && (DEBUG_LIGHTS || LightingManager.DEBUG_MUZZLE
+            || LightingManager.DEBUG_IMPACT || LightingManager.DEBUG_SHADOW || LightingManager.DEBUG_FOG)) {
+            viewport.apply();
+            shapeRenderer.setProjectionMatrix(camera.combined);
+            shapeRenderer.begin(
+                LightingManager.DEBUG_SHADOW || LightingManager.DEBUG_FOG
+                    ? ShapeRenderer.ShapeType.Line
+                    : ShapeRenderer.ShapeType.Filled
+            );
+            if (DEBUG_LIGHTS || LightingManager.DEBUG_MUZZLE || LightingManager.DEBUG_IMPACT) {
+                lightingManager.renderDebug(shapeRenderer);
+            }
+            if (LightingManager.DEBUG_SHADOW) {
+                lightingManager.renderShadowDebug(gameWorld, gameWorld.getCycleState(), shapeRenderer);
+            }
+            if (LightingManager.DEBUG_FOG) {
+                lightingManager.renderFogDebug(shapeRenderer);
+            }
+            shapeRenderer.end();
+        }
 
         if (state != State.MENU) {
             shapeRenderer.setProjectionMatrix(camera.combined);
@@ -337,6 +413,12 @@ public class Main extends ApplicationAdapter {
         }
         if (gameWorld != null) {
             gameWorld.dispose();
+        }
+        if (lightingManager != null) {
+            lightingManager.dispose();
+        }
+        if (sceneFrameBuffer != null) {
+            sceneFrameBuffer.dispose();
         }
         if (font != null) {
             font.dispose();

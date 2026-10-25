@@ -102,10 +102,8 @@ final class GameWorld {
         }
 
         int direction = player.getFacing();
-        float centerY = player.getY() + Player.HEIGHT * 0.62f;
-        float muzzleX = direction > 0
-            ? player.getX() + Player.WIDTH + 2f
-            : player.getX() - 2f;
+        float centerY = getMuzzleY();
+        float muzzleX = getMuzzleX();
         bulletEffects.add(new Bullet.Effect(
             strength, Bullet.EffectType.MUZZLE_FLASH, muzzleX, centerY, direction
         ));
@@ -114,6 +112,20 @@ final class GameWorld {
             float offset = (i - (strength.getProjectileCount() - 1) / 2f) * strength.getSpread();
             addBullet(centerY + offset, strength, direction);
         }
+    }
+
+    float getMuzzleX() {
+        return player.getFacing() > 0
+            ? player.getX() + Player.WIDTH + 2f
+            : player.getX() - 2f;
+    }
+
+    float getMuzzleY() {
+        return player.getY() + Player.HEIGHT * 0.62f;
+    }
+
+    int getPlayerFacing() {
+        return player.getFacing();
     }
 
     private void addBullet(float centerY, Bullet.Strength strength, int direction) {
@@ -175,6 +187,62 @@ final class GameWorld {
 
     GameStats getStats() {
         return stats;
+    }
+
+    ParallaxBackground.CycleState getCycleState() {
+        return background.getCycleState();
+    }
+
+    float getElapsed() {
+        return background.getElapsed();
+    }
+
+    float getLayerOffset(String layerName) {
+        return background.getLayerOffset(layerName);
+    }
+
+    float getLayerWidth(String layerName) {
+        return background.getLayerWidth(layerName);
+    }
+
+    int getBulletCount() {
+        return bullets.size;
+    }
+
+    Bullet getBullet(int index) {
+        return bullets.get(index);
+    }
+
+    boolean containsBullet(Bullet target) {
+        for (int i = 0; i < bullets.size; i++) {
+            if (bullets.get(i) == target) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    int getBulletEffectCount() {
+        return bulletEffects.size;
+    }
+
+    Bullet.Effect getBulletEffect(int index) {
+        return bulletEffects.get(index);
+    }
+
+    int getEnemyCount() {
+        return enemies.size;
+    }
+
+    Enemy getEnemy(int index) {
+        return enemies.get(index);
+    }
+
+    float getEnemyRenderedWidth(int index) {
+        Enemy enemy = enemies.get(index);
+        int frameIndex = (int) (enemy.getAnimationTime() * 8f) % 6;
+        TextureRegion frame = enemyFrames[frameIndex / 2][frameIndex % 2];
+        return Enemy.SIZE * frame.getRegionWidth() / frame.getRegionHeight();
     }
 
     /** Chame quando o jogador cumprir a meta da fase. */
