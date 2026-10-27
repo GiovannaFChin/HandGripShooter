@@ -6,7 +6,7 @@ import com.badlogic.gdx.Input;
 public final class GameController {
     private final GameWorld gameWorld;
     private final ArduinoReaderThread arduino;
-    private static final boolean TEST_MODE = true;
+    private static final boolean TEST_MODE = false;
 
     public GameController(GameWorld gameWorld, String serialPort) {
         this.gameWorld = gameWorld;

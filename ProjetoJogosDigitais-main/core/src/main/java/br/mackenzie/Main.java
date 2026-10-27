@@ -23,6 +23,8 @@ public class Main extends ApplicationAdapter {
     private static final boolean LIGHT_SPIKE = true;
     private static final boolean DEBUG_LIGHTS = false;
 
+    private static final String SERIAL_PORT = "COM6";
+
     private OrthographicCamera camera;
     private FitViewport viewport;
     private SpriteBatch batch;
@@ -108,7 +110,7 @@ public class Main extends ApplicationAdapter {
         btnToMenu  = new Rectangle(cx - bw / 2f, py - 60f,  bw, bh);
 
         gameWorld = new GameWorld();
-        gameController = new GameController(gameWorld, "COM3");
+        gameController = new GameController(gameWorld, SERIAL_PORT);
         gameController.start();
     }
 
@@ -357,17 +359,32 @@ public class Main extends ApplicationAdapter {
         }
     }
 
-    private void drawHeart(float cx, float cy, float s, boolean full) {
-        shapeRenderer.setColor(full ? HEART_FULL : HEART_EMPTY);
+    private void drawHeart(float cx, float cy, float s, int part) {
+        shapeRenderer.setColor(HEART_EMPTY);
         shapeRenderer.circle(cx - s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
         shapeRenderer.circle(cx + s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
         shapeRenderer.triangle(cx - s, cy + s * 0.15f, cx + s, cy + s * 0.15f, cx, cy - s);
+
+        shapeRenderer.setColor(HEART_FULL);
+        if (part >= 2) {
+            shapeRenderer.circle(cx - s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
+            shapeRenderer.circle(cx + s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
+            shapeRenderer.triangle(cx - s, cy + s * 0.15f, cx + s, cy + s * 0.15f, cx, cy - s);
+        } else if (part == 1) {
+            shapeRenderer.circle(cx - s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
+            shapeRenderer.triangle(cx - s, cy + s * 0.15f, cx, cy + s * 0.15f, cx, cy - s);
+        }
     }
 
     private void drawHearts() {
-        int lives = gameWorld.getPlayer().getHp();
+        int hp = gameWorld.getPlayer().getHp();
+        float s = 7f;
+        float spacing = 2f * s + 5f;
+        float cy = GameWorld.WORLD_HEIGHT - 11f;
+
         for (int i = 0; i < Player.MAX_LIVES; i++) {
-            drawHeart(GameWorld.WORLD_WIDTH - 12f - i * 14f, GameWorld.WORLD_HEIGHT - 12f, 4f, i < lives);
+            float cx = GameWorld.WORLD_WIDTH - 12f - (Player.MAX_LIVES - 1 - i) * spacing;
+            drawHeart(cx, cy, s, hp - i * 2);
         }
     }
 

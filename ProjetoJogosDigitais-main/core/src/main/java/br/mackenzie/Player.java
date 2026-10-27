@@ -84,7 +84,7 @@ final class Player {
     void reset() {
         x = 48f;
         y = GameWorld.ACTOR_MIN_Y;
-        hp = MAX_LIVES;
+        hp = MAX_HP;
         invulnerableTimer = 0f;
         facing = 1;
         movementAnimation.reset();
