@@ -32,9 +32,19 @@ public class Main extends ApplicationAdapter {
     private BitmapFont font;
     private GameWorld gameWorld;
     private GameController gameController;
+    private Texture menuBackground;
+    private Texture menuLogo;
+    private Texture menuNewGame;
+    private Texture menuNewGameSelected;
+    private Texture menuExit;
+    private Texture menuExitSelected;
 
     private enum State { MENU, PLAYING, PAUSED, GAME_OVER }
     private State state = State.MENU;
+
+    private static final float MENU_OPTION_X = 20f;
+    private static final float MENU_OPTION_Y = 69f;
+    private static final float MENU_OPTION_GAP = 4f;
 
     private static final Color PANEL  = Color.valueOf("2A0E3D");
     private static final Color ORANGE = Color.valueOf("EF6A3E");
@@ -47,6 +57,12 @@ public class Main extends ApplicationAdapter {
     private final Vector3 touch = new Vector3();
     private Rectangle btnStart, btnExit;
     private Rectangle btnResume, btnRestart, btnToMenu;
+    private final Rectangle menuNewGameBounds = new Rectangle(
+        MENU_OPTION_X, MENU_OPTION_Y, 66f, 10f
+    );
+    private final Rectangle menuExitBounds = new Rectangle(
+        MENU_OPTION_X, MENU_OPTION_Y - (10f + MENU_OPTION_GAP), 36f, 10f
+    );
     private boolean hoverResume, hoverRestart, hoverToMenu;
     private boolean hoverStart, hoverExit;
 
@@ -76,6 +92,12 @@ public class Main extends ApplicationAdapter {
         font = new BitmapFont();
 
         font.getRegion().getTexture().setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        menuBackground = loadMenuTexture("menu_ui/fundo_inicial.png");
+        menuLogo = loadMenuTexture("menu_ui/logo_completa.png");
+        menuNewGame = loadMenuTexture("menu_ui/opcao_novo_jogo_normal.png");
+        menuNewGameSelected = loadMenuTexture("menu_ui/opcao_novo_jogo_selecionada.png");
+        menuExit = loadMenuTexture("menu_ui/opcao_sair_normal.png");
+        menuExitSelected = loadMenuTexture("menu_ui/opcao_sair_selecionada.png");
 
         float bw = 130f, bh = 22f, cx = GameWorld.WORLD_WIDTH / 2f;
         btnStart = new Rectangle(cx - bw / 2f, GameWorld.WORLD_HEIGHT * 0.45f, bw, bh);
@@ -104,6 +126,11 @@ public class Main extends ApplicationAdapter {
 
         ScreenUtils.clear(0f, 0f, 0f, 1f);
         batch.setProjectionMatrix(camera.combined);
+        if (state == State.MENU) {
+            drawMenuScreen();
+            return;
+        }
+
         if (LIGHT_SPIKE) {
             lightingManager.updateFog(
                 gameWorld.getElapsed(),
@@ -200,6 +227,12 @@ public class Main extends ApplicationAdapter {
         state = State.PLAYING;
     }
 
+    private Texture loadMenuTexture(String path) {
+        Texture texture = new Texture(Gdx.files.internal(path));
+        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        return texture;
+    }
+
     private void updatePlaying(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.P)) {
             state = State.PAUSED;
@@ -283,6 +316,19 @@ public class Main extends ApplicationAdapter {
         layoutMenuButtons();
         touch.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
         viewport.unproject(touch);
+        if (state == State.MENU) {
+            hoverStart = menuNewGameBounds.contains(touch.x, touch.y);
+            hoverExit = menuExitBounds.contains(touch.x, touch.y);
+            boolean click = Gdx.input.justTouched();
+
+            if ((click && hoverStart) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                startGame();
+            } else if ((click && hoverExit) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                Gdx.app.exit();
+            }
+            return;
+        }
+
         hoverStart = btnStart.contains(touch.x, touch.y);
         hoverExit = btnExit.contains(touch.x, touch.y);
         boolean click = Gdx.input.justTouched();
@@ -361,6 +407,25 @@ public class Main extends ApplicationAdapter {
     }
 
     private void drawMenuScreen() {
+        if (state == State.MENU) {
+            float optionY = MENU_OPTION_Y;
+            batch.begin();
+            batch.draw(menuBackground, 0f, 0f, GameWorld.WORLD_WIDTH, GameWorld.WORLD_HEIGHT);
+            batch.draw(menuLogo, 7f, 104f);
+            batch.draw(
+                hoverStart ? menuNewGameSelected : menuNewGame,
+                MENU_OPTION_X,
+                optionY
+            );
+            batch.draw(
+                hoverExit ? menuExitSelected : menuExit,
+                MENU_OPTION_X,
+                optionY - (10f + MENU_OPTION_GAP)
+            );
+            batch.end();
+            return;
+        }
+
         boolean over = state == State.GAME_OVER;
         float w = GameWorld.WORLD_WIDTH, h = GameWorld.WORLD_HEIGHT;
 
@@ -425,6 +490,24 @@ public class Main extends ApplicationAdapter {
         }
         if (shapeRenderer != null) {
             shapeRenderer.dispose();
+        }
+        if (menuBackground != null) {
+            menuBackground.dispose();
+        }
+        if (menuLogo != null) {
+            menuLogo.dispose();
+        }
+        if (menuNewGame != null) {
+            menuNewGame.dispose();
+        }
+        if (menuNewGameSelected != null) {
+            menuNewGameSelected.dispose();
+        }
+        if (menuExit != null) {
+            menuExit.dispose();
+        }
+        if (menuExitSelected != null) {
+            menuExitSelected.dispose();
         }
         if (batch != null) {
             batch.dispose();

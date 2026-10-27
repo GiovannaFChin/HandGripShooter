@@ -51,4 +51,15 @@ bullet_shoot/projetil_grande_spritesheet.png
 bullet_shoot/projetil_medio_spritesheet.png
 bullet_shoot/projetil_pequeno_spritesheet.png
 enemies/pink_j/jelly_run.png
+menu_ui/fundo_inicial.png
+menu_ui/logo_completa.png
+menu_ui/logo_handgrip.png
+menu_ui/logo_shooter.png
+menu_ui/opcao_continuar_normal.png
+menu_ui/opcao_continuar_selecionada.png
+menu_ui/opcao_novo_jogo_normal.png
+menu_ui/opcao_novo_jogo_selecionada.png
+menu_ui/opcao_sair_normal.png
+menu_ui/opcao_sair_selecionada.png
+menu_ui/seta_cursor.png
 player/shoot/movement/Dog_shoot.png
