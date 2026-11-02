@@ -68,7 +68,12 @@ final class GameWorld {
     void update(float delta, float horizontal, float vertical, boolean firing) {
         stats.update(delta);   // tempo de jogo da fase (a pausa não conta)
         player.update(delta, horizontal, vertical, firing);
+        ParallaxBackground.Period previousPeriod = background.getCycleState().getPeriod();
         background.update(delta);
+        ParallaxBackground.Period currentPeriod = background.getCycleState().getPeriod();
+        if (currentPeriod != previousPeriod) {
+            stats.nextPhase();
+        }
 
         fireCooldown -= delta;
         if (firing && fireCooldown <= 0f) {

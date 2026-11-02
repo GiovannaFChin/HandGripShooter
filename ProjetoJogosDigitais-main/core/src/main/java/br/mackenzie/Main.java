@@ -18,12 +18,35 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main extends ApplicationAdapter {
     private static final boolean LIGHT_SPIKE = true;
     private static final boolean DEBUG_LIGHTS = false;
 
     private static final String SERIAL_PORT = "COM6";
+    private static final String PAUSE_UI_FOLDER = "menu_ui/pause/";
+    private static final String IN_GAME_UI_FOLDER = "menu_ui/in-game/";
+    private static final float CONTROLS_FADE_DURATION = 3f;
+    private static final String[] PAUSE_UI_ASSETS = {
+        "botao_continuar_normal.png", "botao_continuar_selecionado.png",
+        "botao_menu_principal_normal.png", "botao_menu_principal_selecionado.png",
+        "botao_reiniciar_normal.png", "botao_reiniciar_selecionado.png",
+        "overlay_escurecer.png", "painel_pausa.png", "seta_cursor_direita.png",
+        "tecla_esc.png", "tecla_m.png", "tecla_r.png", "titulo_pausado.png"
+    };
+    private static final String[] IN_GAME_UI_ASSETS = {
+        "barra_forca_marcadores.png", "barra_forca_moldura.png",
+        "barra_forca_preenchimento.png", "coracao_cheio.png", "coracao_vazio.png",
+        "icone_apertos.png", "icone_fase_manha.png", "icone_fase_noite.png",
+        "icone_fase_tarde.png", "icone_pontos.png", "painel_apertos.png",
+        "painel_controles.png", "painel_fase.png", "painel_pontos.png",
+        "rotulo_apertos.png", "rotulo_fase.png", "rotulo_forca.png",
+        "rotulo_mover.png", "rotulo_pausar.png", "rotulo_pontos.png", "rotulo_tiro.png",
+        "tecla_baixo.png", "tecla_cima.png", "tecla_direita.png",
+        "tecla_espaco.png"
+    };
 
     private OrthographicCamera camera;
     private FitViewport viewport;
@@ -40,6 +63,9 @@ public class Main extends ApplicationAdapter {
     private Texture menuNewGameSelected;
     private Texture menuExit;
     private Texture menuExitSelected;
+    private final Map<String, Texture> uiTextures = new HashMap<>();
+    private boolean controlsFadeStarted;
+    private float controlsFadeElapsed;
 
     private enum State { MENU, PLAYING, PAUSED, GAME_OVER }
     private State state = State.MENU;
@@ -52,9 +78,6 @@ public class Main extends ApplicationAdapter {
     private static final Color ORANGE = Color.valueOf("EF6A3E");
     private static final Color CREAM  = Color.valueOf("FFF3E0");
     private static final Color YELLOW = Color.valueOf("F7E3A8");
-    private static final Color HEART_FULL  = Color.valueOf("E5384F");
-    private static final Color HEART_EMPTY = Color.valueOf("4A2A5E");
-
     private final GlyphLayout layout = new GlyphLayout();
     private final Vector3 touch = new Vector3();
     private Rectangle btnStart, btnExit;
@@ -104,11 +127,13 @@ public class Main extends ApplicationAdapter {
         float bw = 130f, bh = 22f, cx = GameWorld.WORLD_WIDTH / 2f;
         btnStart = new Rectangle(cx - bw / 2f, GameWorld.WORLD_HEIGHT * 0.45f, bw, bh);
         btnExit  = new Rectangle(cx - bw / 2f, GameWorld.WORLD_HEIGHT * 0.45f - 30f, bw, bh);
-        float py = GameWorld.WORLD_HEIGHT * 0.52f;
-        btnResume  = new Rectangle(cx - bw / 2f, py,        bw, bh);
-        btnRestart = new Rectangle(cx - bw / 2f, py - 30f,  bw, bh);
-        btnToMenu  = new Rectangle(cx - bw / 2f, py - 60f,  bw, bh);
+        float pauseButtonX = (GameWorld.WORLD_WIDTH - 148f) / 2f;
+        btnResume  = new Rectangle(pauseButtonX, 94f, 148f, 22f);
+        btnRestart = new Rectangle(pauseButtonX, 66f, 148f, 22f);
+        btnToMenu  = new Rectangle(pauseButtonX, 38f, 148f, 22f);
 
+        loadUiTextures(PAUSE_UI_FOLDER, PAUSE_UI_ASSETS);
+        loadUiTextures(IN_GAME_UI_FOLDER, IN_GAME_UI_ASSETS);
         gameWorld = new GameWorld();
         gameController = new GameController(gameWorld, SERIAL_PORT);
         gameController.start();
@@ -195,37 +220,26 @@ public class Main extends ApplicationAdapter {
         }
 
         if (state != State.MENU) {
-            shapeRenderer.setProjectionMatrix(camera.combined);
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            drawForceBar(gameController.getForce());
-            drawHearts();
-            shapeRenderer.end();
-
-            if (state == State.PLAYING) {
-                batch.begin();
-                GameStats stats = gameWorld.getStats();
-                int p = stats.getPhaseNumber();
-                font.draw(batch, "Fase " + p + "  Apertos: " + stats.getSqueezes(p - 1)
-                    + "  Pontos: " + stats.getTotalScore(), 10f, 147f);
-                font.draw(batch, "Setas: mover  |  Espaco: tiro  |  ESC: pausar", 10f, 12f);
-                batch.end();
-            }
+            drawHud();
         }
 
         if (state == State.PAUSED) drawPauseScreen();
         else if (state != State.PLAYING) drawMenuScreen();
     }
 
-    private void drawForceBar(int force) {
-        float fraction = MathUtils.clamp(force / 4095f, 0f, 1f);
-        shapeRenderer.setColor(0.3f, 0.3f, 0.3f, 1f);
-        shapeRenderer.rect(10f, 166f, 120f, 5f);
-        shapeRenderer.setColor(1f, 0.5f, 0f, 1f);
-        shapeRenderer.rect(10f, 166f, 120f * fraction, 5f);
+    private void loadUiTextures(String folder, String[] assets) {
+        for (String asset : assets) {
+            String path = folder + asset;
+            Texture texture = new Texture(Gdx.files.internal(path));
+            texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            uiTextures.put(path, texture);
+        }
     }
 
     private void startGame() {
         gameWorld.reset();
+        controlsFadeStarted = false;
+        controlsFadeElapsed = 0f;
         state = State.PLAYING;
     }
 
@@ -235,12 +249,37 @@ public class Main extends ApplicationAdapter {
         return texture;
     }
 
+    private Texture uiTexture(String path) {
+        Texture texture = uiTextures.get(path);
+        if (texture == null) {
+            throw new IllegalStateException("UI texture was not loaded: " + path);
+        }
+        return texture;
+    }
+
+    private void drawUiTexture(String path, float x, float y) {
+        batch.draw(uiTexture(path), x, y);
+    }
+
+    private void drawUiTexture(String path, float x, float y, float width, float height) {
+        batch.draw(uiTexture(path), x, y, width, height);
+    }
+
     private void updatePlaying(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.P)) {
             state = State.PAUSED;
             return;
         }
+        float previousPlayerX = gameWorld.getPlayer().getX();
+        float previousPlayerY = gameWorld.getPlayer().getY();
         gameController.update(delta);
+        if (!controlsFadeStarted
+            && (gameWorld.getPlayer().getX() != previousPlayerX
+                || gameWorld.getPlayer().getY() != previousPlayerY)) {
+            controlsFadeStarted = true;
+        } else if (controlsFadeStarted) {
+            controlsFadeElapsed = Math.min(CONTROLS_FADE_DURATION, controlsFadeElapsed + delta);
+        }
         if (gameWorld.getPlayer().isDead()) state = State.GAME_OVER;
     }
 
@@ -278,27 +317,44 @@ public class Main extends ApplicationAdapter {
     }
 
     private void drawPauseScreen() {
-        float w = GameWorld.WORLD_WIDTH, h = GameWorld.WORLD_HEIGHT;
-
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.10f, 0.03f, 0.18f, 0.70f);
-        shapeRenderer.rect(0f, 0f, w, h);
-        drawButton(btnResume, hoverResume);
-        drawButton(btnRestart, hoverRestart);
-        drawButton(btnToMenu, hoverToMenu);
-        shapeRenderer.end();
-
+        boolean selectedResume = hoverResume || (!hoverRestart && !hoverToMenu);
+        boolean selectedRestart = hoverRestart;
+        boolean selectedToMenu = hoverToMenu;
         batch.begin();
-        font.getData().setScale(2f);
-        drawCentered("PAUSADO", h * 0.82f, ORANGE);
-        font.getData().setScale(1f);
-        drawButtonLabel(btnResume, "Continuar", hoverResume);
-        drawButtonLabel(btnRestart, "Reiniciar", hoverRestart);
-        drawButtonLabel(btnToMenu, "Menu principal", hoverToMenu);
-        drawCentered("ESC: continuar  |  R: reiniciar  |  M: menu", 12f, CREAM);
-        font.setColor(Color.WHITE);
+        drawUiTexture(PAUSE_UI_FOLDER + "overlay_escurecer.png", 0f, 0f);
+        drawUiTexture(PAUSE_UI_FOLDER + "painel_pausa.png", 62f, 24.5f);
+        drawUiTexture(PAUSE_UI_FOLDER + "titulo_pausado.png", 96.5f, 130f);
+
+        drawUiTexture(
+            PAUSE_UI_FOLDER + (selectedResume
+                ? "botao_continuar_selecionado.png"
+                : "botao_continuar_normal.png"),
+            btnResume.x, btnResume.y
+        );
+        drawUiTexture(PAUSE_UI_FOLDER + "tecla_esc.png", btnResume.x + 117f, btnResume.y + 3.5f);
+
+        drawUiTexture(
+            PAUSE_UI_FOLDER + (hoverRestart
+                ? "botao_reiniciar_selecionado.png"
+                : "botao_reiniciar_normal.png"),
+            btnRestart.x, btnRestart.y
+        );
+        drawUiTexture(PAUSE_UI_FOLDER + "tecla_r.png", btnRestart.x + 127f, btnRestart.y + 3.5f);
+
+        drawUiTexture(
+            PAUSE_UI_FOLDER + (hoverToMenu
+                ? "botao_menu_principal_selecionado.png"
+                : "botao_menu_principal_normal.png"),
+            btnToMenu.x, btnToMenu.y
+        );
+        drawUiTexture(PAUSE_UI_FOLDER + "tecla_m.png", btnToMenu.x + 127f, btnToMenu.y + 3.5f);
+        if (selectedResume) {
+            drawUiTexture(PAUSE_UI_FOLDER + "seta_cursor_direita.png", btnResume.x - 13f, btnResume.y + 4.5f);
+        } else if (selectedRestart) {
+            drawUiTexture(PAUSE_UI_FOLDER + "seta_cursor_direita.png", btnRestart.x - 13f, btnRestart.y + 4.5f);
+        } else if (selectedToMenu) {
+            drawUiTexture(PAUSE_UI_FOLDER + "seta_cursor_direita.png", btnToMenu.x - 13f, btnToMenu.y + 4.5f);
+        }
         batch.end();
     }
 
@@ -359,33 +415,106 @@ public class Main extends ApplicationAdapter {
         }
     }
 
-    private void drawHeart(float cx, float cy, float s, int part) {
-        shapeRenderer.setColor(HEART_EMPTY);
-        shapeRenderer.circle(cx - s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
-        shapeRenderer.circle(cx + s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
-        shapeRenderer.triangle(cx - s, cy + s * 0.15f, cx + s, cy + s * 0.15f, cx, cy - s);
-
-        shapeRenderer.setColor(HEART_FULL);
-        if (part >= 2) {
-            shapeRenderer.circle(cx - s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
-            shapeRenderer.circle(cx + s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
-            shapeRenderer.triangle(cx - s, cy + s * 0.15f, cx + s, cy + s * 0.15f, cx, cy - s);
-        } else if (part == 1) {
-            shapeRenderer.circle(cx - s * 0.5f, cy + s * 0.3f, s * 0.55f, 16);
-            shapeRenderer.triangle(cx - s, cy + s * 0.15f, cx, cy + s * 0.15f, cx, cy - s);
+    private void drawHud() {
+        GameStats stats = gameWorld.getStats();
+        ParallaxBackground.Period period = gameWorld.getCycleState().getPeriod();
+        int phase = period.ordinal() + 1;
+        String phaseIcon;
+        switch (period) {
+            case AFTERNOON:
+                phaseIcon = "icone_fase_tarde.png";
+                break;
+            case NIGHT:
+                phaseIcon = "icone_fase_noite.png";
+                break;
+            default:
+                phaseIcon = "icone_fase_manha.png";
+                break;
         }
+
+        batch.begin();
+        drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_forca.png", 8f, 168f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "barra_forca_moldura.png", 7f, 154f);
+        Texture forceFill = uiTexture(IN_GAME_UI_FOLDER + "barra_forca_preenchimento.png");
+        int fillWidth = Math.round(forceFill.getWidth()
+            * MathUtils.clamp(gameController.getForce() / 4095f, 0f, 1f));
+        if (fillWidth > 0) {
+            batch.draw(forceFill, 10f, 157f, 0, 0, fillWidth, forceFill.getHeight());
+        }
+        drawUiTexture(IN_GAME_UI_FOLDER + "barra_forca_marcadores.png", 10f, 157f);
+
+        drawHudPanel("painel_fase.png", 6f, 137f, 47f, 14f);
+        drawUiTexture(IN_GAME_UI_FOLDER + phaseIcon, 8f, 137f, 14f, 14f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_fase.png", 24f, 140.5f, 19f, 7f);
+
+        drawHudPanel("painel_apertos.png", 54.5f, 137f, 63f, 14f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "icone_apertos.png", 57f, 137f, 14f, 14f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_apertos.png", 68f, 139.5f, 25f, 6f);
+
+        drawHudPanel("painel_pontos.png", 118.75f, 137f, 84f, 14f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "icone_pontos.png", 122f, 139f, 10f, 10f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_pontos.png", 135f, 139.5f, 28f, 7f);
+
+        font.getData().setScale(0.65f);
+        drawHudValue(6f, 47f, 137f, String.valueOf(phase));
+        drawHudValue(54.5f, 63f, 137f, String.valueOf(stats.getSqueezes(phase - 1)));
+        drawHudValue(118.75f, 84f, 137f, String.valueOf(stats.getTotalScore()));
+        font.getData().setScale(1f);
+
+        drawHearts();
+        float controlsAlpha = 1f - controlsFadeElapsed / CONTROLS_FADE_DURATION;
+        if (state != State.GAME_OVER && controlsAlpha > 0f) {
+            batch.setColor(1f, 1f, 1f, controlsAlpha);
+            drawControls();
+            batch.setColor(Color.WHITE);
+        }
+        batch.end();
+    }
+
+    private void drawHudPanel(String asset, float x, float y, float width, float height) {
+        drawUiTexture(IN_GAME_UI_FOLDER + asset, x, y, width, height);
+    }
+
+    private void drawHudValue(float panelX, float panelWidth, float panelY, String value) {
+        layout.setText(font, value);
+        float x = panelX + panelWidth - 3f - layout.width;
+        font.setColor(CREAM);
+        font.draw(batch, value, x, panelY + 11f);
+        font.setColor(Color.WHITE);
     }
 
     private void drawHearts() {
         int hp = gameWorld.getPlayer().getHp();
-        float s = 7f;
-        float spacing = 2f * s + 5f;
-        float cy = GameWorld.WORLD_HEIGHT - 11f;
-
+        Texture fullHeart = uiTexture(IN_GAME_UI_FOLDER + "coracao_cheio.png");
+        Texture emptyHeart = uiTexture(IN_GAME_UI_FOLDER + "coracao_vazio.png");
         for (int i = 0; i < Player.MAX_LIVES; i++) {
-            float cx = GameWorld.WORLD_WIDTH - 12f - (Player.MAX_LIVES - 1 - i) * spacing;
-            drawHeart(cx, cy, s, hp - i * 2);
+            float x = GameWorld.WORLD_WIDTH - 19f - (Player.MAX_LIVES - 1 - i) * 17f;
+            float y = GameWorld.WORLD_HEIGHT - 21f;
+            int heartHp = hp - i * 2;
+            if (heartHp >= 2) {
+                batch.draw(fullHeart, x, y, 14f, 14f);
+            } else if (heartHp == 1) {
+                batch.draw(emptyHeart, x, y, 14f, 14f);
+                batch.draw(fullHeart, x, y, 7f, 14f, 0, 0,
+                    fullHeart.getWidth() / 2, fullHeart.getHeight(), false, false);
+            } else {
+                batch.draw(emptyHeart, x, y, 14f, 14f);
+            }
         }
+    }
+
+    private void drawControls() {
+        drawUiTexture(IN_GAME_UI_FOLDER + "painel_controles.png", 20f, 2f);
+        Texture rightArrowKey = uiTexture(IN_GAME_UI_FOLDER + "tecla_direita.png");
+        batch.draw(rightArrowKey, 46f, 5.5f, -15f, 15f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "tecla_cima.png", 47f, 5.5f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "tecla_baixo.png", 63f, 5.5f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "tecla_direita.png", 79f, 5.5f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_mover.png", 94f, 8.5f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "tecla_espaco.png", 138f, 5.5f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_tiro.png", 184f, 8.5f);
+        drawUiTexture(PAUSE_UI_FOLDER + "tecla_esc.png", 221f, 5.5f);
+        drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_pausar.png", 251f, 8.5f);
     }
 
     /** Retângulo preenchido com cantos arredondados (raio r). */
@@ -525,6 +654,9 @@ public class Main extends ApplicationAdapter {
         }
         if (menuExitSelected != null) {
             menuExitSelected.dispose();
+        }
+        for (Texture texture : uiTextures.values()) {
+            texture.dispose();
         }
         if (batch != null) {
             batch.dispose();
