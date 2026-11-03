@@ -34,8 +34,8 @@ A iniciativa também busca demonstrar como a programação e os componentes elet
 | --------------------- | --------------------------------------- |
 | Sem pressão           | Personagem aguarda                      |
 | Aperto leve           | Disparo simples                         |
-| Aperto moderado       | Disparo reforçado                       |
-| Aperto forte          | Disparo especial ou múltiplos projéteis |
+| Aperto moderado       | Disparo com dois projéteis              |
+| Aperto forte          | Disparo com três projéteis              |
 
 ## Fases do jogo
 
@@ -45,7 +45,7 @@ Fase 1 — Dia: o jogo começa em um ambiente diurno, introduzindo a mecânica d
 
 Fase 2 — Tarde: o cenário passa gradualmente para o entardecer, criando uma mudança visual no ambiente.
 
-Fase 3 — Noite: o cenário fica noturno e os monstros se tornam mais fortes, com olhos vermelhos brilhantes, aumentando o desafio para o jogador.
+Fase 3 — Noite: o cenário fica noturno e os monstros se tornam mais fortes, aumentando o desafio para o jogador.
 
 A progressão das fases aumenta o desafio e incentiva o jogador a continuar interagindo com o dispositivo para avançar no jogo.
 
