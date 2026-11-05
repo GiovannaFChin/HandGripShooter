@@ -2,33 +2,45 @@ package br.mackenzie;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Main extends ApplicationAdapter {
-    private static final boolean LIGHT_SPIKE = true;
-    private static final boolean DEBUG_LIGHTS = false;
+
+
 
     private static final String SERIAL_PORT = "COM6";
+    private static final float FINAL_PHASE_SECONDS = 50f;
+
+    private static final boolean LIGHT_SPIKE = true;
+    private static final boolean DEBUG_LIGHTS = false;
+    private static final String LAYER_GROUND = "10_chao_e_props";
+    private static final String LAYER_VILLAGE = "09_vila_perto";
+
+    private static final String MENU_UI_FOLDER = "menu_ui/";
     private static final String PAUSE_UI_FOLDER = "menu_ui/pause/";
     private static final String IN_GAME_UI_FOLDER = "menu_ui/in-game/";
-    private static final float CONTROLS_FADE_DURATION = 3f;
+
+    private static final String[] MENU_UI_ASSETS = {
+        "fundo_inicial.png", "logo_completa.png",
+        "opcao_novo_jogo_normal.png", "opcao_novo_jogo_selecionada.png",
+        "opcao_sair_normal.png", "opcao_sair_selecionada.png"
+    };
     private static final String[] PAUSE_UI_ASSETS = {
         "botao_continuar_normal.png", "botao_continuar_selecionado.png",
         "botao_menu_principal_normal.png", "botao_menu_principal_selecionado.png",
@@ -36,6 +48,11 @@ public class Main extends ApplicationAdapter {
         "overlay_escurecer.png", "painel_pausa.png", "seta_cursor_direita.png",
         "tecla_esc.png", "tecla_m.png", "tecla_r.png", "titulo_pausado.png"
     };
+
+    private static final String TITLE_GAME_OVER = "titulo_game_over.png";
+    private static final String TITLE_FINISHED = "titulo_fim_de_jogo.png";
+    private static final String[] END_TITLE_ASSETS = {TITLE_GAME_OVER, TITLE_FINISHED};
+
     private static final String[] IN_GAME_UI_ASSETS = {
         "barra_forca_marcadores.png", "barra_forca_moldura.png",
         "barra_forca_preenchimento.png", "coracao_cheio.png", "coracao_vazio.png",
@@ -47,49 +64,60 @@ public class Main extends ApplicationAdapter {
         "tecla_baixo.png", "tecla_cima.png", "tecla_direita.png",
         "tecla_espaco.png"
     };
-
-    private OrthographicCamera camera;
-    private FitViewport viewport;
-    private SpriteBatch batch;
-    private FrameBuffer sceneFrameBuffer;
-    private LightingManager lightingManager;
-    private ShapeRenderer shapeRenderer;
-    private BitmapFont font;
-    private GameWorld gameWorld;
-    private GameController gameController;
-    private Texture menuBackground;
-    private Texture menuLogo;
-    private Texture menuNewGame;
-    private Texture menuNewGameSelected;
-    private Texture menuExit;
-    private Texture menuExitSelected;
-    private final Map<String, Texture> uiTextures = new HashMap<>();
-    private boolean controlsFadeStarted;
-    private float controlsFadeElapsed;
-
-    private enum State { MENU, PLAYING, PAUSED, GAME_OVER }
-    private State state = State.MENU;
+    private static final String[] PHASE_ICONS = {
+        "icone_fase_manha.png", "icone_fase_tarde.png", "icone_fase_noite.png"
+    };
 
     private static final float MENU_OPTION_X = 20f;
     private static final float MENU_OPTION_Y = 69f;
     private static final float MENU_OPTION_GAP = 4f;
 
-    private static final Color PANEL  = Color.valueOf("2A0E3D");
+    private static final float PANEL_X = 62f;
+    private static final float PANEL_Y = 24.5f;
+    private static final float BUTTON_X = (GameWorld.WORLD_WIDTH - 148f) / 2f;
+    private static final float END_TITLE_Y = 135f;
+    private static final float SUMMARY_TOP = 130f;
+    private static final float CONTROLS_FADE_DURATION = 3f;
+
     private static final Color ORANGE = Color.valueOf("EF6A3E");
     private static final Color CREAM  = Color.valueOf("FFF3E0");
     private static final Color YELLOW = Color.valueOf("F7E3A8");
+
+    private enum State { MENU, PLAYING, PAUSED, GAME_OVER, FINISHED }
+
+    private State state = State.MENU;
+
+    private final Rectangle[] startButtons = {
+        new Rectangle(MENU_OPTION_X, MENU_OPTION_Y, 66f, 10f),                          // Novo jogo
+        new Rectangle(MENU_OPTION_X, MENU_OPTION_Y - (10f + MENU_OPTION_GAP), 36f, 10f) // Sair
+    };
+    private final Rectangle[] pauseButtons = {
+        new Rectangle(BUTTON_X, 94f, 148f, 22f),   // Continuar
+        new Rectangle(BUTTON_X, 66f, 148f, 22f),   // Reiniciar
+        new Rectangle(BUTTON_X, 38f, 148f, 22f)    // Menu principal
+    };
+    private final Rectangle[] endButtons = {
+        new Rectangle(BUTTON_X, 54f, 148f, 22f),   // Reiniciar
+        new Rectangle(BUTTON_X, 28f, 148f, 22f)    // Menu principal
+    };
+    private int hovered = -1;
+
+    private boolean controlsFadeStarted;
+    private float controlsFadeElapsed;
+
+    private OrthographicCamera camera;
+    private FitViewport viewport;
+    private SpriteBatch batch;
+    private ShapeRenderer shapeRenderer;
+    private BitmapFont font;
+    private FrameBuffer sceneFrameBuffer;
+    private LightingManager lightingManager;
+    private final Map<String, Texture> uiTextures = new HashMap<>();
     private final GlyphLayout layout = new GlyphLayout();
     private final Vector3 touch = new Vector3();
-    private Rectangle btnStart, btnExit;
-    private Rectangle btnResume, btnRestart, btnToMenu;
-    private final Rectangle menuNewGameBounds = new Rectangle(
-        MENU_OPTION_X, MENU_OPTION_Y, 66f, 10f
-    );
-    private final Rectangle menuExitBounds = new Rectangle(
-        MENU_OPTION_X, MENU_OPTION_Y - (10f + MENU_OPTION_GAP), 36f, 10f
-    );
-    private boolean hoverResume, hoverRestart, hoverToMenu;
-    private boolean hoverStart, hoverExit;
+
+    private GameWorld gameWorld;
+    private GameController gameController;
 
     @Override
     public void create() {
@@ -100,43 +128,35 @@ public class Main extends ApplicationAdapter {
 
         batch = new SpriteBatch();
         if (LIGHT_SPIKE) {
-            sceneFrameBuffer = new FrameBuffer(
-                Pixmap.Format.RGBA8888,
-                (int) GameWorld.WORLD_WIDTH,
-                (int) GameWorld.WORLD_HEIGHT,
-                false
-            );
-            sceneFrameBuffer.getColorBufferTexture().setFilter(
-                Texture.TextureFilter.Nearest,
-                Texture.TextureFilter.Nearest
-            );
-            lightingManager = new LightingManager(camera, batch, viewport);
-            lightingManager.init();
+            createLighting();
         }
         shapeRenderer = new ShapeRenderer();
         font = new BitmapFont();
-
         font.getRegion().getTexture().setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-        menuBackground = loadMenuTexture("menu_ui/fundo_inicial.png");
-        menuLogo = loadMenuTexture("menu_ui/logo_completa.png");
-        menuNewGame = loadMenuTexture("menu_ui/opcao_novo_jogo_normal.png");
-        menuNewGameSelected = loadMenuTexture("menu_ui/opcao_novo_jogo_selecionada.png");
-        menuExit = loadMenuTexture("menu_ui/opcao_sair_normal.png");
-        menuExitSelected = loadMenuTexture("menu_ui/opcao_sair_selecionada.png");
 
-        float bw = 130f, bh = 22f, cx = GameWorld.WORLD_WIDTH / 2f;
-        btnStart = new Rectangle(cx - bw / 2f, GameWorld.WORLD_HEIGHT * 0.45f, bw, bh);
-        btnExit  = new Rectangle(cx - bw / 2f, GameWorld.WORLD_HEIGHT * 0.45f - 30f, bw, bh);
-        float pauseButtonX = (GameWorld.WORLD_WIDTH - 148f) / 2f;
-        btnResume  = new Rectangle(pauseButtonX, 94f, 148f, 22f);
-        btnRestart = new Rectangle(pauseButtonX, 66f, 148f, 22f);
-        btnToMenu  = new Rectangle(pauseButtonX, 38f, 148f, 22f);
-
+        loadUiTextures(MENU_UI_FOLDER, MENU_UI_ASSETS);
         loadUiTextures(PAUSE_UI_FOLDER, PAUSE_UI_ASSETS);
         loadUiTextures(IN_GAME_UI_FOLDER, IN_GAME_UI_ASSETS);
+        loadOptionalUiTextures(PAUSE_UI_FOLDER, END_TITLE_ASSETS);
+
         gameWorld = new GameWorld();
         gameController = new GameController(gameWorld, SERIAL_PORT);
         gameController.start();
+    }
+
+    private void createLighting() {
+        sceneFrameBuffer = new FrameBuffer(
+            Pixmap.Format.RGBA8888,
+            (int) GameWorld.WORLD_WIDTH,
+            (int) GameWorld.WORLD_HEIGHT,
+            false
+        );
+        sceneFrameBuffer.getColorBufferTexture().setFilter(
+            Texture.TextureFilter.Nearest,
+            Texture.TextureFilter.Nearest
+        );
+        lightingManager = new LightingManager(camera, batch, viewport);
+        lightingManager.init();
     }
 
     @Override
@@ -147,140 +167,26 @@ public class Main extends ApplicationAdapter {
             updatePlaying(delta);
         } else {
             gameController.clearPendingShots();
-            handleMenuInput();
+            updateMenuInput();
         }
         camera.update();
 
         ScreenUtils.clear(0f, 0f, 0f, 1f);
         batch.setProjectionMatrix(camera.combined);
+
         if (state == State.MENU) {
-            drawMenuScreen();
+            drawStartMenu();
             return;
         }
 
-        if (LIGHT_SPIKE) {
-            lightingManager.updateFog(
-                gameWorld.getElapsed(),
-                gameWorld.getCycleState(),
-                gameWorld.getLayerOffset("10_chao_e_props")
-            );
-            sceneFrameBuffer.begin();
-            ScreenUtils.clear(0f, 0f, 0f, 1f);
-            batch.begin();
-            gameWorld.renderBackground(batch);
-            lightingManager.renderFog();
-            if (state != State.MENU) {
-                lightingManager.renderShadows(gameWorld, gameWorld.getCycleState());
-            }
-            if (state != State.MENU) gameWorld.renderActors(batch);
-            if (state != State.MENU) gameWorld.renderBullets(batch);
-            batch.end();
-            sceneFrameBuffer.end();
+        renderScene(delta);
+        drawHud();
 
-            lightingManager.update(
-                delta,
-                gameWorld.getCycleState(),
-                gameWorld.getElapsed(),
-                gameWorld.getLayerOffset("10_chao_e_props"),
-                gameWorld.getLayerWidth("10_chao_e_props"),
-                gameWorld.getLayerOffset("09_vila_perto"),
-                gameWorld.getLayerWidth("09_vila_perto"),
-                DEBUG_LIGHTS,
-                gameWorld
-            );
-            lightingManager.render(sceneFrameBuffer.getColorBufferTexture());
-            batch.setShader(null);
-        } else {
-            batch.begin();
-            gameWorld.renderBackground(batch);
-            if (state != State.MENU) gameWorld.renderActors(batch);
-            if (state != State.MENU) gameWorld.renderBullets(batch);
-            batch.end();
+        if (state == State.PAUSED) {
+            drawPauseScreen();
+        } else if (isEndState()) {
+            drawEndScreen();
         }
-
-        if (LIGHT_SPIKE && (DEBUG_LIGHTS || LightingManager.DEBUG_MUZZLE
-            || LightingManager.DEBUG_IMPACT || LightingManager.DEBUG_SHADOW || LightingManager.DEBUG_FOG)) {
-            viewport.apply();
-            shapeRenderer.setProjectionMatrix(camera.combined);
-            shapeRenderer.begin(
-                LightingManager.DEBUG_SHADOW || LightingManager.DEBUG_FOG
-                    ? ShapeRenderer.ShapeType.Line
-                    : ShapeRenderer.ShapeType.Filled
-            );
-            if (DEBUG_LIGHTS || LightingManager.DEBUG_MUZZLE || LightingManager.DEBUG_IMPACT) {
-                lightingManager.renderDebug(shapeRenderer);
-            }
-            if (LightingManager.DEBUG_SHADOW) {
-                lightingManager.renderShadowDebug(gameWorld, gameWorld.getCycleState(), shapeRenderer);
-            }
-            if (LightingManager.DEBUG_FOG) {
-                lightingManager.renderFogDebug(shapeRenderer);
-            }
-            shapeRenderer.end();
-        }
-
-        if (state != State.MENU) {
-            drawHud();
-        }
-
-        if (state == State.PAUSED) drawPauseScreen();
-        else if (state != State.PLAYING) drawMenuScreen();
-    }
-
-    private void loadUiTextures(String folder, String[] assets) {
-        for (String asset : assets) {
-            String path = folder + asset;
-            Texture texture = new Texture(Gdx.files.internal(path));
-            texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            uiTextures.put(path, texture);
-        }
-    }
-
-    private void startGame() {
-        gameWorld.reset();
-        controlsFadeStarted = false;
-        controlsFadeElapsed = 0f;
-        state = State.PLAYING;
-    }
-
-    private Texture loadMenuTexture(String path) {
-        Texture texture = new Texture(Gdx.files.internal(path));
-        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-        return texture;
-    }
-
-    private Texture uiTexture(String path) {
-        Texture texture = uiTextures.get(path);
-        if (texture == null) {
-            throw new IllegalStateException("UI texture was not loaded: " + path);
-        }
-        return texture;
-    }
-
-    private void drawUiTexture(String path, float x, float y) {
-        batch.draw(uiTexture(path), x, y);
-    }
-
-    private void drawUiTexture(String path, float x, float y, float width, float height) {
-        batch.draw(uiTexture(path), x, y, width, height);
-    }
-
-    private void updatePlaying(float delta) {
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.P)) {
-            state = State.PAUSED;
-            return;
-        }
-        float previousPlayerX = gameWorld.getPlayer().getX();
-        float previousPlayerY = gameWorld.getPlayer().getY();
-        gameController.update(delta);
-        if (!controlsFadeStarted
-            && (gameWorld.getPlayer().getX() != previousPlayerX
-                || gameWorld.getPlayer().getY() != previousPlayerY)) {
-            controlsFadeStarted = true;
-        } else if (controlsFadeStarted) {
-            controlsFadeElapsed = Math.min(CONTROLS_FADE_DURATION, controlsFadeElapsed + delta);
-        }
-        if (gameWorld.getPlayer().isDead()) state = State.GAME_OVER;
     }
 
     @Override
@@ -288,163 +194,232 @@ public class Main extends ApplicationAdapter {
         if (state == State.PLAYING) state = State.PAUSED;
     }
 
-    private void drawSummary(float top) {
-        GameStats s = gameWorld.getStats();
-        float[] col = {55f, 105f, 170f, 235f};
-        float lineH = 12f;
-
-        font.setColor(YELLOW);
-        font.draw(batch, "Fase", col[0], top);
-        font.draw(batch, "Apertos", col[1], top);
-        font.draw(batch, "Pontos", col[2], top);
-        font.draw(batch, "Aper./min", col[3], top);
-
-        font.setColor(CREAM);
-        for (int i = 0; i < s.getPhaseNumber(); i++) {
-            float y = top - lineH * (i + 1);
-            font.draw(batch, String.valueOf(i + 1), col[0], y);
-            font.draw(batch, String.valueOf(s.getSqueezes(i)), col[1], y);
-            font.draw(batch, String.valueOf(s.getScore(i)), col[2], y);
-            font.draw(batch, String.format("%.1f", s.getSqueezesPerMinute(i)), col[3], y);
-        }
-
-        float yTotal = top - lineH * (s.getPhaseNumber() + 1);
-        font.setColor(ORANGE);
-        font.draw(batch, "Total", col[0], yTotal);
-        font.draw(batch, String.valueOf(s.getTotalSqueezes()), col[1], yTotal);
-        font.draw(batch, String.valueOf(s.getTotalScore()), col[2], yTotal);
-        font.draw(batch, String.format("%.1f", s.getTotalSqueezesPerMinute()), col[3], yTotal);
-    }
-
-    private void drawPauseScreen() {
-        boolean selectedResume = hoverResume || (!hoverRestart && !hoverToMenu);
-        boolean selectedRestart = hoverRestart;
-        boolean selectedToMenu = hoverToMenu;
-        batch.begin();
-        drawUiTexture(PAUSE_UI_FOLDER + "overlay_escurecer.png", 0f, 0f);
-        drawUiTexture(PAUSE_UI_FOLDER + "painel_pausa.png", 62f, 24.5f);
-        drawUiTexture(PAUSE_UI_FOLDER + "titulo_pausado.png", 96.5f, 130f);
-
-        drawUiTexture(
-            PAUSE_UI_FOLDER + (selectedResume
-                ? "botao_continuar_selecionado.png"
-                : "botao_continuar_normal.png"),
-            btnResume.x, btnResume.y
-        );
-        drawUiTexture(PAUSE_UI_FOLDER + "tecla_esc.png", btnResume.x + 117f, btnResume.y + 3.5f);
-
-        drawUiTexture(
-            PAUSE_UI_FOLDER + (hoverRestart
-                ? "botao_reiniciar_selecionado.png"
-                : "botao_reiniciar_normal.png"),
-            btnRestart.x, btnRestart.y
-        );
-        drawUiTexture(PAUSE_UI_FOLDER + "tecla_r.png", btnRestart.x + 127f, btnRestart.y + 3.5f);
-
-        drawUiTexture(
-            PAUSE_UI_FOLDER + (hoverToMenu
-                ? "botao_menu_principal_selecionado.png"
-                : "botao_menu_principal_normal.png"),
-            btnToMenu.x, btnToMenu.y
-        );
-        drawUiTexture(PAUSE_UI_FOLDER + "tecla_m.png", btnToMenu.x + 127f, btnToMenu.y + 3.5f);
-        if (selectedResume) {
-            drawUiTexture(PAUSE_UI_FOLDER + "seta_cursor_direita.png", btnResume.x - 13f, btnResume.y + 4.5f);
-        } else if (selectedRestart) {
-            drawUiTexture(PAUSE_UI_FOLDER + "seta_cursor_direita.png", btnRestart.x - 13f, btnRestart.y + 4.5f);
-        } else if (selectedToMenu) {
-            drawUiTexture(PAUSE_UI_FOLDER + "seta_cursor_direita.png", btnToMenu.x - 13f, btnToMenu.y + 4.5f);
-        }
-        batch.end();
-    }
-
-    private void layoutMenuButtons() {
-        float w = GameWorld.WORLD_WIDTH, h = GameWorld.WORLD_HEIGHT;
-        float bw = 130f, bh = 22f, cx = w / 2f;
-        if (state == State.GAME_OVER) {
-            btnStart.set(cx - bw - 5f, 8f, bw, bh);
-            btnExit.set(cx + 5f, 8f, bw, bh);
-        } else {
-            btnStart.set(cx - bw / 2f, h * 0.45f, bw, bh);
-            btnExit.set(cx - bw / 2f, h * 0.45f - 30f, bw, bh);
+    @Override
+    public void resize(int width, int height) {
+        if (width > 0 && height > 0) {
+            viewport.update(width, height, true);
         }
     }
 
-    private void handleMenuInput() {
-        layoutMenuButtons();
-        touch.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
-        viewport.unproject(touch);
-        if (state == State.MENU) {
-            hoverStart = menuNewGameBounds.contains(touch.x, touch.y);
-            hoverExit = menuExitBounds.contains(touch.x, touch.y);
-            boolean click = Gdx.input.justTouched();
+    @Override
+    public void dispose() {
+        if (gameController != null) gameController.dispose();
+        if (gameWorld != null) gameWorld.dispose();
+        if (lightingManager != null) lightingManager.dispose();
+        if (sceneFrameBuffer != null) sceneFrameBuffer.dispose();
+        if (font != null) font.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
+        for (Texture texture : uiTextures.values()) {
+            texture.dispose();
+        }
+        if (batch != null) batch.dispose();
+    }
 
-            if ((click && hoverStart) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
-                startGame();
-            } else if ((click && hoverExit) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-                Gdx.app.exit();
-            }
+    private void startGame() {
+        gameWorld.reset();
+        gameController.clearPendingShots();
+        controlsFadeStarted = false;
+        controlsFadeElapsed = 0f;
+        state = State.PLAYING;
+    }
+
+    private void updatePlaying(float delta) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.P)) {
+            state = State.PAUSED;
             return;
         }
 
-        hoverStart = btnStart.contains(touch.x, touch.y);
-        hoverExit = btnExit.contains(touch.x, touch.y);
+        Player player = gameWorld.getPlayer();
+        float previousX = player.getX();
+        float previousY = player.getY();
+
+        gameController.update(delta);
+
+        updateControlsHint(delta, player.getX() != previousX || player.getY() != previousY);
+        checkEndOfGame();
+    }
+
+    private void updateControlsHint(float delta, boolean playerMoved) {
+        if (!controlsFadeStarted && playerMoved) {
+            controlsFadeStarted = true;
+        } else if (controlsFadeStarted) {
+            controlsFadeElapsed = Math.min(CONTROLS_FADE_DURATION, controlsFadeElapsed + delta);
+        }
+    }
+
+    private void checkEndOfGame() {
+        if (gameWorld.getPlayer().isDead()) {
+            state = State.GAME_OVER;
+            return;
+        }
+        GameStats stats = gameWorld.getStats();
+        int lastPhase = GameStats.PHASES - 1;
+        if (stats.getPhaseNumber() == GameStats.PHASES
+            && stats.getSeconds(lastPhase) >= FINAL_PHASE_SECONDS) {
+            state = State.FINISHED;
+        }
+    }
+
+    private boolean isEndState() {
+        return state == State.GAME_OVER || state == State.FINISHED;
+    }
+
+    private void updateMenuInput() {
+        updateHover();
         boolean click = Gdx.input.justTouched();
 
-        if (state == State.PAUSED) {
-            hoverResume  = btnResume.contains(touch.x, touch.y);
-            hoverRestart = btnRestart.contains(touch.x, touch.y);
-            hoverToMenu  = btnToMenu.contains(touch.x, touch.y);
+        switch (state) {
+            case MENU:
+                if (activated(click, 0, Input.Keys.ENTER)) startGame();
+                else if (activated(click, 1, Input.Keys.ESCAPE)) Gdx.app.exit();
+                break;
 
-            if ((click && hoverResume) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)
-                || Gdx.input.isKeyJustPressed(Input.Keys.P)) {
-                state = State.PLAYING;
-            } else if ((click && hoverRestart) || Gdx.input.isKeyJustPressed(Input.Keys.R)) {
-                startGame();
-            } else if ((click && hoverToMenu) || Gdx.input.isKeyJustPressed(Input.Keys.M)) {
-                state = State.MENU;
+            case PAUSED:
+                if (activated(click, 0, Input.Keys.ESCAPE, Input.Keys.P)) state = State.PLAYING;
+                else if (activated(click, 1, Input.Keys.R)) startGame();
+                else if (activated(click, 2, Input.Keys.M)) state = State.MENU;
+                break;
+
+            case GAME_OVER:
+            case FINISHED:
+                if (activated(click, 0, Input.Keys.ENTER, Input.Keys.R)) startGame();
+                else if (activated(click, 1, Input.Keys.ESCAPE, Input.Keys.M)) state = State.MENU;
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    private void updateHover() {
+        touch.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
+        viewport.unproject(touch);
+
+        Rectangle[] buttons = currentButtons();
+        hovered = -1;
+        for (int i = 0; i < buttons.length; i++) {
+            if (buttons[i].contains(touch.x, touch.y)) {
+                hovered = i;
             }
+        }
+    }
+
+    private Rectangle[] currentButtons() {
+        switch (state) {
+            case PAUSED:
+                return pauseButtons;
+            case GAME_OVER:
+            case FINISHED:
+                return endButtons;
+            default:
+                return startButtons;
+        }
+    }
+
+    private boolean activated(boolean click, int buttonIndex, int... keys) {
+        if (click && hovered == buttonIndex) return true;
+        for (int key : keys) {
+            if (Gdx.input.isKeyJustPressed(key)) return true;
+        }
+        return false;
+    }
+
+    private void renderScene(float delta) {
+        if (LIGHT_SPIKE) {
+            renderSceneWithLighting(delta);
+            renderLightDebug();
+        } else {
+            batch.begin();
+            gameWorld.renderBackground(batch);
+            gameWorld.renderActors(batch);
+            gameWorld.renderBullets(batch);
+            batch.end();
+        }
+    }
+
+    private void renderSceneWithLighting(float delta) {
+        lightingManager.updateFog(
+            gameWorld.getElapsed(),
+            gameWorld.getCycleState(),
+            gameWorld.getLayerOffset(LAYER_GROUND)
+        );
+
+        sceneFrameBuffer.begin();
+        ScreenUtils.clear(0f, 0f, 0f, 1f);
+        batch.begin();
+        gameWorld.renderBackground(batch);
+        lightingManager.renderFog();
+        lightingManager.renderShadows(gameWorld, gameWorld.getCycleState());
+        gameWorld.renderActors(batch);
+        gameWorld.renderBullets(batch);
+        batch.end();
+        sceneFrameBuffer.end();
+
+        lightingManager.update(
+            delta,
+            gameWorld.getCycleState(),
+            gameWorld.getElapsed(),
+            gameWorld.getLayerOffset(LAYER_GROUND),
+            gameWorld.getLayerWidth(LAYER_GROUND),
+            gameWorld.getLayerOffset(LAYER_VILLAGE),
+            gameWorld.getLayerWidth(LAYER_VILLAGE),
+            DEBUG_LIGHTS,
+            gameWorld
+        );
+        lightingManager.render(sceneFrameBuffer.getColorBufferTexture());
+        batch.setShader(null);
+    }
+
+    private void renderLightDebug() {
+        boolean debugLines = LightingManager.DEBUG_SHADOW || LightingManager.DEBUG_FOG;
+        boolean debugShapes = DEBUG_LIGHTS || LightingManager.DEBUG_MUZZLE || LightingManager.DEBUG_IMPACT;
+        if (!debugLines && !debugShapes) {
             return;
         }
 
-        if ((click && hoverStart) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
-            startGame();
-        } else if ((click && hoverExit) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            if (state == State.GAME_OVER) state = State.MENU;
-            else Gdx.app.exit();
+        viewport.apply();
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(debugLines ? ShapeRenderer.ShapeType.Line : ShapeRenderer.ShapeType.Filled);
+        if (debugShapes) {
+            lightingManager.renderDebug(shapeRenderer);
         }
+        if (LightingManager.DEBUG_SHADOW) {
+            lightingManager.renderShadowDebug(gameWorld, gameWorld.getCycleState(), shapeRenderer);
+        }
+        if (LightingManager.DEBUG_FOG) {
+            lightingManager.renderFogDebug(shapeRenderer);
+        }
+        shapeRenderer.end();
     }
 
     private void drawHud() {
         GameStats stats = gameWorld.getStats();
-        ParallaxBackground.Period period = gameWorld.getCycleState().getPeriod();
-        int phase = period.ordinal() + 1;
-        String phaseIcon;
-        switch (period) {
-            case AFTERNOON:
-                phaseIcon = "icone_fase_tarde.png";
-                break;
-            case NIGHT:
-                phaseIcon = "icone_fase_noite.png";
-                break;
-            default:
-                phaseIcon = "icone_fase_manha.png";
-                break;
-        }
+        int phase = stats.getPhaseNumber();
 
         batch.begin();
+        drawForceBar();
+        drawHudPanels(phase, stats);
+        drawHearts();
+        drawControlsHint();
+        batch.end();
+    }
+
+    private void drawForceBar() {
         drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_forca.png", 8f, 168f);
         drawUiTexture(IN_GAME_UI_FOLDER + "barra_forca_moldura.png", 7f, 154f);
-        Texture forceFill = uiTexture(IN_GAME_UI_FOLDER + "barra_forca_preenchimento.png");
-        int fillWidth = Math.round(forceFill.getWidth()
+
+        Texture fill = uiTexture(IN_GAME_UI_FOLDER + "barra_forca_preenchimento.png");
+        int fillWidth = Math.round(fill.getWidth()
             * MathUtils.clamp(gameController.getForce() / 4095f, 0f, 1f));
         if (fillWidth > 0) {
-            batch.draw(forceFill, 10f, 157f, 0, 0, fillWidth, forceFill.getHeight());
+            batch.draw(fill, 10f, 157f, 0, 0, fillWidth, fill.getHeight());
         }
         drawUiTexture(IN_GAME_UI_FOLDER + "barra_forca_marcadores.png", 10f, 157f);
+    }
 
+    private void drawHudPanels(int phase, GameStats stats) {
         drawHudPanel("painel_fase.png", 6f, 137f, 47f, 14f);
-        drawUiTexture(IN_GAME_UI_FOLDER + phaseIcon, 8f, 137f, 14f, 14f);
+        drawUiTexture(IN_GAME_UI_FOLDER + PHASE_ICONS[phase - 1], 8f, 137f, 14f, 14f);
         drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_fase.png", 24f, 140.5f, 19f, 7f);
 
         drawHudPanel("painel_apertos.png", 54.5f, 137f, 63f, 14f);
@@ -460,15 +435,6 @@ public class Main extends ApplicationAdapter {
         drawHudValue(54.5f, 63f, 137f, String.valueOf(stats.getSqueezes(phase - 1)));
         drawHudValue(118.75f, 84f, 137f, String.valueOf(stats.getTotalScore()));
         font.getData().setScale(1f);
-
-        drawHearts();
-        float controlsAlpha = 1f - controlsFadeElapsed / CONTROLS_FADE_DURATION;
-        if (state != State.GAME_OVER && controlsAlpha > 0f) {
-            batch.setColor(1f, 1f, 1f, controlsAlpha);
-            drawControls();
-            batch.setColor(Color.WHITE);
-        }
-        batch.end();
     }
 
     private void drawHudPanel(String asset, float x, float y, float width, float height) {
@@ -503,10 +469,16 @@ public class Main extends ApplicationAdapter {
         }
     }
 
-    private void drawControls() {
+    private void drawControlsHint() {
+        float alpha = 1f - controlsFadeElapsed / CONTROLS_FADE_DURATION;
+        if (isEndState() || alpha <= 0f) {
+            return;
+        }
+        batch.setColor(1f, 1f, 1f, alpha);
+
         drawUiTexture(IN_GAME_UI_FOLDER + "painel_controles.png", 20f, 2f);
         Texture rightArrowKey = uiTexture(IN_GAME_UI_FOLDER + "tecla_direita.png");
-        batch.draw(rightArrowKey, 46f, 5.5f, -15f, 15f);
+        batch.draw(rightArrowKey, 46f, 5.5f, -15f, 15f);   // seta esquerda (direita espelhada)
         drawUiTexture(IN_GAME_UI_FOLDER + "tecla_cima.png", 47f, 5.5f);
         drawUiTexture(IN_GAME_UI_FOLDER + "tecla_baixo.png", 63f, 5.5f);
         drawUiTexture(IN_GAME_UI_FOLDER + "tecla_direita.png", 79f, 5.5f);
@@ -515,151 +487,150 @@ public class Main extends ApplicationAdapter {
         drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_tiro.png", 184f, 8.5f);
         drawUiTexture(PAUSE_UI_FOLDER + "tecla_esc.png", 221f, 5.5f);
         drawUiTexture(IN_GAME_UI_FOLDER + "rotulo_pausar.png", 251f, 8.5f);
+
+        batch.setColor(Color.WHITE);
     }
 
-    /** Retângulo preenchido com cantos arredondados (raio r). */
-    private void roundedRect(float x, float y, float w, float h, float r) {
-        shapeRenderer.rect(x + r, y, w - 2f * r, h);                 // centro
-        shapeRenderer.rect(x, y + r, r, h - 2f * r);                 // lado esquerdo
-        shapeRenderer.rect(x + w - r, y + r, r, h - 2f * r);         // lado direito
-        shapeRenderer.circle(x + r, y + r, r, 16);                   // cantos
-        shapeRenderer.circle(x + w - r, y + r, r, 16);
-        shapeRenderer.circle(x + r, y + h - r, r, 16);
-        shapeRenderer.circle(x + w - r, y + h - r, r, 16);
+    private void drawStartMenu() {
+        batch.begin();
+        drawUiTexture(MENU_UI_FOLDER + "fundo_inicial.png", 0f, 0f,
+            GameWorld.WORLD_WIDTH, GameWorld.WORLD_HEIGHT);
+        drawUiTexture(MENU_UI_FOLDER + "logo_completa.png", 7f, 104f);
+        drawUiTexture(MENU_UI_FOLDER + (hovered == 0
+                ? "opcao_novo_jogo_selecionada.png" : "opcao_novo_jogo_normal.png"),
+            MENU_OPTION_X, MENU_OPTION_Y);
+        drawUiTexture(MENU_UI_FOLDER + (hovered == 1
+                ? "opcao_sair_selecionada.png" : "opcao_sair_normal.png"),
+            MENU_OPTION_X, MENU_OPTION_Y - (10f + MENU_OPTION_GAP));
+        batch.end();
     }
 
-    private void drawButton(Rectangle r, boolean hover) {
-        float radius = r.height / 2f;   // formato de pílula (bem arredondado)
+    private void drawPauseScreen() {
+        int selected = Math.max(hovered, 0);
 
-        // borda laranja
-        shapeRenderer.setColor(ORANGE);
-        roundedRect(r.x - 1f, r.y - 1f, r.width + 2f, r.height + 2f, radius + 1f);
-
-        // preenchimento
-        shapeRenderer.setColor(hover ? ORANGE : PANEL);
-        roundedRect(r.x, r.y, r.width, r.height, radius);
+        batch.begin();
+        drawMenuPanel();
+        drawUiTexture(PAUSE_UI_FOLDER + "titulo_pausado.png", 96.5f, 130f);
+        drawMenuButton("continuar", pauseButtons[0], selected == 0, "tecla_esc.png", 117f);
+        drawMenuButton("reiniciar", pauseButtons[1], selected == 1, "tecla_r.png", 127f);
+        drawMenuButton("menu_principal", pauseButtons[2], selected == 2, "tecla_m.png", 127f);
+        batch.end();
     }
 
-    private void drawButtonLabel(Rectangle r, String text, boolean hover) {
-        font.setColor(hover ? PANEL : CREAM);
-        layout.setText(font, text);
-        font.draw(batch, text, r.x + (r.width - layout.width) / 2f, r.y + (r.height + layout.height) / 2f);
+    private void drawEndScreen() {
+        int selected = Math.max(hovered, 0);
+
+        batch.begin();
+        drawMenuPanel();
+        drawEndTitle();
+        drawSummary(SUMMARY_TOP);
+        drawMenuButton("reiniciar", endButtons[0], selected == 0, "tecla_r.png", 127f);
+        drawMenuButton("menu_principal", endButtons[1], selected == 1, "tecla_m.png", 127f);
+        batch.end();
+    }
+
+    private void drawMenuPanel() {
+        drawUiTexture(PAUSE_UI_FOLDER + "overlay_escurecer.png", 0f, 0f);
+        drawUiTexture(PAUSE_UI_FOLDER + "painel_pausa.png", PANEL_X, PANEL_Y);
+    }
+
+    private void drawMenuButton(String name, Rectangle bounds, boolean selected, String keyAsset, float keyX) {
+        drawUiTexture(PAUSE_UI_FOLDER + "botao_" + name
+            + (selected ? "_selecionado.png" : "_normal.png"), bounds.x, bounds.y);
+        drawUiTexture(PAUSE_UI_FOLDER + keyAsset, bounds.x + keyX, bounds.y + 3.5f);
+        if (selected) {
+            drawUiTexture(PAUSE_UI_FOLDER + "seta_cursor_direita.png", bounds.x - 13f, bounds.y + 4.5f);
+        }
+    }
+
+    private void drawEndTitle() {
+        boolean finished = state == State.FINISHED;
+        String asset = PAUSE_UI_FOLDER + (finished ? TITLE_FINISHED : TITLE_GAME_OVER);
+
+        Texture title = uiTextures.get(asset);
+        if (title != null) {
+            drawUiTexture(asset, (GameWorld.WORLD_WIDTH - title.getWidth()) / 2f, END_TITLE_Y);
+            return;
+        }
+
+        font.getData().setScale(1.3f);
+        drawCentered(finished ? "FIM DE JOGO" : "GAME OVER", END_TITLE_Y + 15f, finished ? YELLOW : ORANGE);
+        font.getData().setScale(1f);
+        font.setColor(Color.WHITE);
+    }
+
+    private void drawSummary(float top) {
+        GameStats stats = gameWorld.getStats();
+        float[] col = {82f, 112f, 162f, 204f};
+        float lineH = 11f;
+
+        font.getData().setScale(0.75f);
+        font.setColor(YELLOW);
+        font.draw(batch, "Fase", col[0], top);
+        font.draw(batch, "Apertos", col[1], top);
+        font.draw(batch, "Pontos", col[2], top);
+        font.draw(batch, "Aper./min", col[3], top);
+
+        font.setColor(CREAM);
+        for (int i = 0; i < stats.getPhaseNumber(); i++) {
+            float y = top - lineH * (i + 1);
+            font.draw(batch, String.valueOf(i + 1), col[0], y);
+            font.draw(batch, String.valueOf(stats.getSqueezes(i)), col[1], y);
+            font.draw(batch, String.valueOf(stats.getScore(i)), col[2], y);
+            font.draw(batch, String.format("%.1f", stats.getSqueezesPerMinute(i)), col[3], y);
+        }
+
+        float yTotal = top - lineH * (stats.getPhaseNumber() + 1);
+        font.setColor(ORANGE);
+        font.draw(batch, "Total", col[0], yTotal);
+        font.draw(batch, String.valueOf(stats.getTotalSqueezes()), col[1], yTotal);
+        font.draw(batch, String.valueOf(stats.getTotalScore()), col[2], yTotal);
+        font.draw(batch, String.format("%.1f", stats.getTotalSqueezesPerMinute()), col[3], yTotal);
+
+        font.getData().setScale(1f);
+        font.setColor(Color.WHITE);
+    }
+
+
+    private void loadUiTextures(String folder, String[] assets) {
+        for (String asset : assets) {
+            loadUiTexture(folder + asset);
+        }
+    }
+
+    private void loadOptionalUiTextures(String folder, String[] assets) {
+        for (String asset : assets) {
+            if (Gdx.files.internal(folder + asset).exists()) {
+                loadUiTexture(folder + asset);
+            }
+        }
+    }
+
+    private void loadUiTexture(String path) {
+        Texture texture = new Texture(Gdx.files.internal(path));
+        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        uiTextures.put(path, texture);
+    }
+
+    private Texture uiTexture(String path) {
+        Texture texture = uiTextures.get(path);
+        if (texture == null) {
+            throw new IllegalStateException("UI texture was not loaded: " + path);
+        }
+        return texture;
+    }
+
+    private void drawUiTexture(String path, float x, float y) {
+        batch.draw(uiTexture(path), x, y);
+    }
+
+    private void drawUiTexture(String path, float x, float y, float width, float height) {
+        batch.draw(uiTexture(path), x, y, width, height);
     }
 
     private void drawCentered(String text, float y, Color color) {
         font.setColor(color);
         layout.setText(font, text);
         font.draw(batch, text, (GameWorld.WORLD_WIDTH - layout.width) / 2f, y);
-    }
-
-    private void drawMenuScreen() {
-        if (state == State.MENU) {
-            float optionY = MENU_OPTION_Y;
-            batch.begin();
-            batch.draw(menuBackground, 0f, 0f, GameWorld.WORLD_WIDTH, GameWorld.WORLD_HEIGHT);
-            batch.draw(menuLogo, 7f, 104f);
-            batch.draw(
-                hoverStart ? menuNewGameSelected : menuNewGame,
-                MENU_OPTION_X,
-                optionY
-            );
-            batch.draw(
-                hoverExit ? menuExitSelected : menuExit,
-                MENU_OPTION_X,
-                optionY - (10f + MENU_OPTION_GAP)
-            );
-            batch.end();
-            return;
-        }
-
-        boolean over = state == State.GAME_OVER;
-        float w = GameWorld.WORLD_WIDTH, h = GameWorld.WORLD_HEIGHT;
-
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.10f, 0.03f, 0.18f, 0.70f);
-        shapeRenderer.rect(0f, 0f, w, h);
-        drawButton(btnStart, hoverStart);
-        drawButton(btnExit, hoverExit);
-        shapeRenderer.end();
-
-        batch.begin();
-        font.getData().setScale(2f);
-        if (over) {
-            drawCentered("GAME OVER", h * 0.90f, ORANGE);
-        } else {
-            float gap = 6f;
-            layout.setText(font, "HandGrip");
-            float w1 = layout.width;
-            layout.setText(font, "Shooter");
-            float x0 = (w - (w1 + gap + layout.width)) / 2f;
-            font.setColor(CREAM);
-            font.draw(batch, "HandGrip", x0, h * 0.78f);
-            font.setColor(YELLOW);
-            font.draw(batch, "Shooter", x0 + w1 + gap, h * 0.78f);
-        }
-        font.getData().setScale(1f);
-
-        if (over) drawSummary(h * 0.70f);
-
-        drawButtonLabel(btnStart, over ? "Jogar novamente" : "Jogar", hoverStart);
-        drawButtonLabel(btnExit, over ? "Menu" : "Sair", hoverExit);
-
-        font.setColor(Color.WHITE);
-        batch.end();
-    }
-
-    @Override
-    public void resize(int width, int height) {
-        if (width > 0 && height > 0) {
-            viewport.update(width, height, true);
-        }
-    }
-
-    @Override
-    public void dispose() {
-        if (gameController != null) {
-            gameController.dispose();
-        }
-        if (gameWorld != null) {
-            gameWorld.dispose();
-        }
-        if (lightingManager != null) {
-            lightingManager.dispose();
-        }
-        if (sceneFrameBuffer != null) {
-            sceneFrameBuffer.dispose();
-        }
-        if (font != null) {
-            font.dispose();
-        }
-        if (shapeRenderer != null) {
-            shapeRenderer.dispose();
-        }
-        if (menuBackground != null) {
-            menuBackground.dispose();
-        }
-        if (menuLogo != null) {
-            menuLogo.dispose();
-        }
-        if (menuNewGame != null) {
-            menuNewGame.dispose();
-        }
-        if (menuNewGameSelected != null) {
-            menuNewGameSelected.dispose();
-        }
-        if (menuExit != null) {
-            menuExit.dispose();
-        }
-        if (menuExitSelected != null) {
-            menuExitSelected.dispose();
-        }
-        for (Texture texture : uiTextures.values()) {
-            texture.dispose();
-        }
-        if (batch != null) {
-            batch.dispose();
-        }
     }
 }

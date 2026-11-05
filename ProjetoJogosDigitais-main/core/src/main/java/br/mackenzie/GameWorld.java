@@ -17,8 +17,10 @@ final class GameWorld {
     static final float ACTOR_MAX_Y = ACTOR_MIN_Y + 20f;
 
     private static final float ENEMY_SPAWN_X = WORLD_WIDTH + 8f;
-    private static final float MIN_ENEMY_INTERVAL = 1f;
-    private static final float MAX_ENEMY_INTERVAL = 2f;
+    private static final float[] MIN_ENEMY_INTERVAL = {1.0f, 0.8f, 0.5f};
+    private static final float[] MAX_ENEMY_INTERVAL = {2.0f, 1.5f, 1.1f};
+    private static final float[] ENEMY_SPEED        = {50f, 60f, 72f};
+    private static final int[]   ENEMY_DAMAGE       = {1, 2, 4};
 
     private final Player player;
     private final Texture enemyTexture;
@@ -48,11 +50,15 @@ final class GameWorld {
 
     private void spawnEnemy() {
         float spawnY = MathUtils.random(ACTOR_MIN_Y, ACTOR_MAX_Y);
-        enemies.add(new Enemy(ENEMY_SPAWN_X, spawnY, background.getElapsed()));
+        enemies.add(new Enemy(
+            ENEMY_SPAWN_X, spawnY, background.getElapsed(),
+            ENEMY_SPEED[stats.getPhaseNumber() - 1]
+        ));
     }
 
-    private static float randomEnemyInterval() {
-        return MathUtils.random(MIN_ENEMY_INTERVAL, MAX_ENEMY_INTERVAL);
+    private float randomEnemyInterval() {
+        int phase = stats.getPhaseNumber() - 1;
+        return MathUtils.random(MIN_ENEMY_INTERVAL[phase], MAX_ENEMY_INTERVAL[phase]);
     }
 
     private void updateBulletEffects(float delta) {
@@ -94,7 +100,7 @@ final class GameWorld {
         checkPlayerCollisions();
     }
 
-    /** Aperto válido vindo do hand grip: conta o aperto e dispara. Os pontos vêm só ao acertar. */
+
     void registerSqueeze(int level) {
         stats.registerSqueeze();
         shoot(level);
@@ -250,17 +256,17 @@ final class GameWorld {
         return Enemy.SIZE * frame.getRegionWidth() / frame.getRegionHeight();
     }
 
-    /** Chame quando o jogador cumprir a meta da fase. */
+
     void advancePhase() {
         stats.nextPhase();
     }
 
-    /** Dano por inimigo, em pontos de vida: 1 = meio coração, 2 = coração inteiro. */
+
     private int enemyDamage() {
-        return stats.getPhaseNumber() == 1 ? 1 : 2;
+        return ENEMY_DAMAGE[stats.getPhaseNumber() - 1];
     }
 
-    /** Inimigo que encosta no player some e tira vida. */
+
     private void checkPlayerCollisions() {
         Rectangle playerBounds = player.getBounds();
         for (int i = enemies.size - 1; i >= 0; i--) {
@@ -273,7 +279,6 @@ final class GameWorld {
         }
     }
 
-    /** Reinicia a partida (usado ao clicar em Jogar, Jogar novamente ou Reiniciar). */
     void reset() {
         player.reset();
         background.reset();

@@ -2,22 +2,23 @@ package br.mackenzie;
 
 final class Enemy {
     static final float SIZE = 32f;
-
+    private final float speed;
     private float x;
     private final float y;
     private final float spawnTime;
     private float animationTime;
 
-    Enemy(float x, float y, float spawnTime) {
+    Enemy(float x, float y, float spawnTime, float speed) {
         this.x = x;
         this.y = y;
         this.spawnTime = spawnTime;
+        this.speed = speed;
     }
 
     void update(float delta, float playerX) {
         float playerCenter = playerX + Player.WIDTH / 2f;
         float targetX = playerCenter - SIZE / 2f;
-        x += Math.signum(targetX - x) * 50f * delta;
+        x += Math.signum(targetX - x) * speed * delta;
         animationTime += delta;
     }
 

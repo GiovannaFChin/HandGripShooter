@@ -13,7 +13,6 @@ final class GameStats {
     private final float[] seconds = new float[PHASES];
     private int phase;   // 0 = fase 1
 
-    /** Soma o tempo da fase atual. Só roda durante a partida, então a pausa não conta. */
     void update(float delta) {
         seconds[phase] += delta;
     }
@@ -22,13 +21,13 @@ final class GameStats {
         squeezes[phase]++;
     }
 
-    /** Tiro que acertou um inimigo. É aqui que os pontos são somados. */
+
     void registerHit(int level) {
         int l = Math.max(1, Math.min(level, POINTS_BY_LEVEL.length - 1));
         score[phase] += POINTS_BY_LEVEL[l];
     }
 
-    /** Fecha a fase atual e abre a próxima. Retorna false se já estava na última. */
+
     boolean nextPhase() {
         if (phase >= PHASES - 1) return false;
         phase++;
@@ -45,6 +44,7 @@ final class GameStats {
     int getPhaseNumber()   { return phase + 1; }
     int getSqueezes(int p) { return squeezes[p]; }
     int getScore(int p)    { return score[p]; }
+    float getSeconds(int p) { return seconds[p]; }
 
     float getSqueezesPerMinute(int p) {
         return seconds[p] > 0f ? squeezes[p] * 60f / seconds[p] : 0f;
